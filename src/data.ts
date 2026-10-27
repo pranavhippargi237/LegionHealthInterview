@@ -14,12 +14,18 @@ export function clinicianMedia(id: string, gender: ProviderGender, index = 0) {
 import { addDays } from "./format";
 
 export const STEPS = [
-  { label: "Right fit", percent: 17 },
-  { label: "Insurance", percent: 33 },
-  { label: "Your care", percent: 50 },
-  { label: "Schedule", percent: 67 },
-  { label: "Basic Info", percent: 83 },
-  { label: "Payment Method", percent: 100 },
+  { label: "Initial questions", percent: 25 },
+  { label: "Schedule", percent: 50 },
+  { label: "Basic Info", percent: 75 },
+  { label: "Payment", percent: 100 },
+] as const;
+
+export const CLINICIAN_LANGUAGES = ["English", "Spanish", "Vietnamese", "Mandarin"] as const;
+export const CLINICIAN_BACKGROUNDS = [
+  "Adult outpatient care",
+  "Trauma-informed care",
+  "ADHD care",
+  "Perinatal mental health",
 ] as const;
 
 export const CONDITIONS = [
@@ -28,7 +34,8 @@ export const CONDITIONS = [
   { id: "anxiety", label: "Anxiety" },
   { id: "bipolar", label: "Bipolar Disorder" },
   { id: "ptsd", label: "PTSD" },
-  { id: "unsure", label: "I'm not sure" },
+  { id: "unsure", label: "Not sure" },
+  { id: "private", label: "Prefer not to say" },
   { id: "other", label: "Other" },
 ] as const;
 
@@ -186,10 +193,34 @@ function slots(providerId: string, dates: string[], times: string[]): Slot[] {
 
 const featured: Provider[] = [
   {
+    id: "jordan-hale",
+    name: "Jordan Hale",
+    title: "Psychiatric Mental Health Nurse Practitioner",
+    role: "psychiatric-np",
+    gender: "nonbinary",
+    languages: ["English"],
+    backgrounds: ["Adult outpatient care"],
+    photo: "/clinicians/demo-jordan-hale.jpg",
+    video: "/clinicians/demo-jordan-hale.mp4",
+    credentials: "PMHNP-BC, MSN",
+    rating: 0,
+    reviews: 0,
+    expertise: ["Anxiety", "Depression"],
+    about:
+      "Hello, I'm Jordan Hale, a fictional clinician in this prototype. This sample introduction is here so you can play a video, pause it, and read the transcript. A real introduction would describe how that clinician likes to work and what a first visit is like. Watching is optional.",
+    slots: [
+      ...slots("jordan-hale", ["2026-10-29"], ["06:30", "07:00"]),
+      ...slots("jordan-hale", ["2026-10-28"], ["18:00"]),
+    ],
+  },
+  {
     id: "chinwe-mbonu",
     name: "Chinwe Mbonu",
     title: "Psychiatric Mental Health Nurse Practitioner",
+    role: "psychiatric-np",
     gender: "woman",
+    languages: ["English"],
+    backgrounds: ["Adult outpatient care", "Trauma-informed care"],
     ...clinicianMedia("chinwe-mbonu", "woman"),
     credentials: "PMHNP-BC, MSN",
     rating: 5,
@@ -207,10 +238,13 @@ const featured: Provider[] = [
   {
     id: "naomi-powell",
     name: "Naomi Powell",
-    title: "Psychiatric Mental Health Nurse Practitioner",
+    title: "Psychiatrist",
+    role: "psychiatrist",
     gender: "woman",
+    languages: ["English", "Spanish"],
+    backgrounds: ["Adult outpatient care", "ADHD care"],
     ...clinicianMedia("naomi-powell", "woman"),
-    credentials: "PMHNP-BC, board-certified",
+    credentials: "MD, board-certified in psychiatry",
     rating: 4.9,
     reviews: 41,
     expertise: [
@@ -223,7 +257,7 @@ const featured: Provider[] = [
       "ADHD",
     ],
     about:
-      "Naomi Lue Powell is a board-certified psychiatric mental health nurse practitioner who provides compassionate, patient-centered care for young adults, adults, and seniors. She supports patients with anxiety, mood, and attention concerns, and explains options before any decision is made.",
+      "Naomi Lue Powell is a board-certified psychiatrist who provides compassionate, patient-centered care for young adults, adults, and seniors. She supports patients with anxiety, mood, and attention concerns, and explains options before any decision is made.",
     badge: "recommended",
     slots: [
       ...slots("naomi-powell", ["2026-11-02"], ["11:30", "12:00", "12:30", "13:00", "13:30", "14:00"]),
@@ -235,7 +269,10 @@ const featured: Provider[] = [
     id: "britanni-greene",
     name: "Britanni Greene",
     title: "Psychiatric Mental Health Nurse Practitioner",
+    role: "psychiatric-np",
     gender: "woman",
+    languages: ["English"],
+    backgrounds: ["Perinatal mental health", "Trauma-informed care"],
     ...clinicianMedia("britanni-greene", "woman"),
     credentials: "PMHNP-BC, MSN",
     rating: 4.9,
@@ -264,7 +301,10 @@ const featured: Provider[] = [
     id: "rodesia-howard",
     name: "Rodesia Howard",
     title: "Psychiatric Mental Health Nurse Practitioner",
+    role: "psychiatric-np",
     gender: "woman",
+    languages: ["English"],
+    backgrounds: ["Adult outpatient care", "ADHD care"],
     ...clinicianMedia("rodesia-howard", "woman"),
     credentials: "PMHNP-BC, MSN",
     rating: 4.8,
@@ -313,38 +353,7 @@ const FIRST = [
   "Greta",
 ];
 
-const GENDER_BY_FIRST: Record<string, ProviderGender> = {
-  Amira: "woman",
-  Jordan: "nonbinary",
-  Luis: "man",
-  Priya: "woman",
-  Elena: "woman",
-  Marcus: "man",
-  Hana: "woman",
-  Owen: "man",
-  Sofia: "woman",
-  Noah: "man",
-  Leila: "woman",
-  Maya: "woman",
-  Jonah: "man",
-  Rosa: "woman",
-  Chloe: "woman",
-  Andre: "man",
-  Fatima: "woman",
-  Hugo: "man",
-  Yara: "woman",
-  Felix: "man",
-  Nora: "woman",
-  Samir: "man",
-  Ines: "woman",
-  Alicia: "woman",
-  Kwame: "man",
-  Ruth: "woman",
-  Omar: "man",
-  Helen: "woman",
-  Idris: "man",
-  Greta: "woman",
-};
+const PROVIDED_GENDER: ProviderGender[] = ["woman", "man", "woman", "nonbinary", "woman", "man"];
 
 const LAST = [
   "Bennett",
@@ -395,6 +404,8 @@ function extraProviders(): Provider[] {
     const first = FIRST[index % FIRST.length];
     const last = LAST[(index * 7) % LAST.length];
     const id = `sample-${index}-${first}-${last}`.toLowerCase();
+    const gender = PROVIDED_GENDER[index % PROVIDED_GENDER.length];
+    const psychiatrist = index % 4 === 0;
     const start = addDays("2026-10-28", (index % 9) + 1);
     const dates = [start, addDays(start, 2), addDays(start, 5)];
     const timeSets = [
@@ -405,10 +416,16 @@ function extraProviders(): Provider[] {
     return {
       id,
       name: `${first} ${last}`,
-      title: "Psychiatric Mental Health Nurse Practitioner",
-      gender: GENDER_BY_FIRST[first],
-      ...clinicianMedia(id, GENDER_BY_FIRST[first], index),
-      credentials: SAMPLE_CREDENTIALS[index % SAMPLE_CREDENTIALS.length],
+      title: psychiatrist ? "Psychiatrist" : "Psychiatric Mental Health Nurse Practitioner",
+      role: psychiatrist ? "psychiatrist" : "psychiatric-np",
+      gender,
+      languages: index % 4 === 1 ? ["English", "Spanish"] : index % 4 === 2 ? ["English", "Vietnamese"] : ["English"],
+      backgrounds: [
+        CLINICIAN_BACKGROUNDS[index % CLINICIAN_BACKGROUNDS.length],
+        ...(index % 3 === 0 ? ["Adult outpatient care"] : []),
+      ],
+      ...clinicianMedia(id, gender, index),
+      credentials: psychiatrist ? "MD, board-certified in psychiatry" : SAMPLE_CREDENTIALS[index % SAMPLE_CREDENTIALS.length],
       rating: Math.round((4.6 + (index % 5) * 0.1) * 10) / 10,
       reviews: 12 + ((index * 5) % 80),
       expertise: FOCUS[index % FOCUS.length],

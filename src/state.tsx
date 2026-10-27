@@ -10,13 +10,14 @@ import {
   type ReactNode,
 } from "react";
 import { parseDate, todayISO } from "./format";
+import { VISIT_TOPIC_IDS } from "./visitNote";
 import type {
   FitDecision,
   FitDisposition,
   FitKey,
   FitTrace,
-  GenderFilter,
   OnboardingData,
+  ProviderGender,
   ScheduleAsk,
   ScheduleResult,
   TimeOfDay,
@@ -65,7 +66,7 @@ export function buildFitTrace(data: Pick<OnboardingData, FitKey | "fitReached" |
   return { questions, disposition };
 }
 
-const KEY = "legion-onboarding-v2";
+const KEY = "legion-onboarding-v3";
 
 export function initialData(): OnboardingData {
   return {
@@ -79,7 +80,9 @@ export function initialData(): OnboardingData {
     virtualOnly: null,
     preferredDate: null,
     timeOfDay: null,
-    genderFilter: "any",
+    genderPrefs: [],
+    languagePrefs: [],
+    backgroundPrefs: [],
     notifyWhenOpen: false,
     scheduleAsks: [],
     fitReached: emptyReached(),
@@ -119,12 +122,23 @@ export function initialData(): OnboardingData {
     extraShown: 0,
     last4: "",
     booked: false,
+    pharmacy: "",
+    visitPhase: "upcoming",
+    visitDay: false,
+    awayFromVisit: false,
+    rescheduling: false,
+    connectionProblem: false,
     banner: "",
+    visitTopics: [],
+    visitNote: "",
+    visitDraft: "",
+    visitWordsSnapshot: "",
+    visitSharedNote: "",
   };
 }
 
 function clampStep(value: unknown) {
-  return typeof value === "number" && value >= 0 && value <= 5 ? Math.floor(value) : 0;
+  return typeof value === "number" && value >= 0 && value <= 3 ? Math.floor(value) : 0;
 }
 
 function yesNo(value: unknown): YesNo {
@@ -172,7 +186,7 @@ function scheduleAsks(value: unknown): ScheduleAsk[] {
       at: row.at,
       date: typeof row.date === "string" ? row.date : null,
       timeOfDay: part,
-      genderFilter: genderFilter(row.genderFilter),
+      genders: genderList(row.genders),
       onDay: bandCounts(row.onDay),
       inNext45Days,
       slotsInRequest: row.slotsInRequest,
@@ -190,8 +204,14 @@ function fitReached(value: unknown): Record<FitKey, boolean> {
   return base;
 }
 
-function genderFilter(value: unknown): GenderFilter {
-  return value === "woman" || value === "man" || value === "nonbinary" || value === "any" ? value : "any";
+function genderList(value: unknown): ProviderGender[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is ProviderGender => item === "woman" || item === "man" || item === "nonbinary");
+}
+
+function stringList(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
 }
 
 export function fitReady(data: OnboardingData) {
@@ -241,13 +261,27 @@ function hydrate(): OnboardingData {
       virtualOnly: yesNo(parsed.virtualOnly),
       preferredDate: typeof parsed.preferredDate === "string" ? parsed.preferredDate : null,
       timeOfDay: timeOfDay(parsed.timeOfDay),
-      genderFilter: genderFilter(parsed.genderFilter),
+      genderPrefs: genderList(parsed.genderPrefs),
+      languagePrefs: stringList(parsed.languagePrefs),
+      backgroundPrefs: stringList(parsed.backgroundPrefs),
       notifyWhenOpen: parsed.notifyWhenOpen === true,
       scheduleAsks: scheduleAsks(parsed.scheduleAsks),
       fitReached: fitReached(parsed.fitReached),
       fitContinued: parsed.fitContinued === true,
       banner: "",
       booked: Boolean(parsed.booked),
+      pharmacy: typeof parsed.pharmacy === "string" ? parsed.pharmacy : "",
+      visitPhase:
+        parsed.visitPhase === "waiting" || parsed.visitPhase === "completed" ? parsed.visitPhase : "upcoming",
+      visitDay: parsed.visitDay === true,
+      awayFromVisit: parsed.awayFromVisit === true,
+      rescheduling: parsed.rescheduling === true,
+      connectionProblem: parsed.connectionProblem === true,
+      visitTopics: stringList(parsed.visitTopics).filter((id) => VISIT_TOPIC_IDS.includes(id)),
+      visitNote: typeof parsed.visitNote === "string" ? parsed.visitNote : "",
+      visitDraft: typeof parsed.visitDraft === "string" ? parsed.visitDraft : "",
+      visitWordsSnapshot: typeof parsed.visitWordsSnapshot === "string" ? parsed.visitWordsSnapshot : "",
+      visitSharedNote: typeof parsed.visitSharedNote === "string" ? parsed.visitSharedNote : "",
     };
     next.fitTrace = buildFitTrace(next);
     return next;
@@ -272,12 +306,22 @@ export function infoProblems(data: OnboardingData) {
   return problems;
 }
 
+const LISTED_INSURERS = ["aetna", "bcbs", "cigna", "uhc", "oscar"];
+
+export function paymentReady(data: OnboardingData) {
+  if (data.insurance === "none") return true;
+  if (data.insurance === "other") return data.otherInsurance.trim().length > 1;
+  return Boolean(data.insurance && LISTED_INSURERS.includes(data.insurance));
+}
+
+export function clipboardReady(data: OnboardingData) {
+  return fitReady(data) && paymentReady(data) && Boolean(data.help);
+}
+
 export function firstIncomplete(data: OnboardingData) {
-  if (!fitReady(data)) return 0;
-  if (!data.insurance) return 1;
-  if (!data.help) return 2;
-  if (!data.providerId || !data.slotId) return 3;
-  if (infoProblems(data).length > 0) return 4;
+  if (!clipboardReady(data)) return 0;
+  if (!data.providerId || !data.slotId) return 1;
+  if (infoProblems(data).length > 0) return 2;
   return null;
 }
 
@@ -335,7 +379,6 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       patch: {
         step: target,
         banner: "",
-        booked: target === 5 ? current.booked : false,
       },
     });
   }, []);
@@ -348,7 +391,17 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const completeBooking = useCallback((last4: string) => {
     dispatch({
       type: "patch",
-      patch: { last4, booked: true, step: 5, banner: "" },
+      patch: {
+        last4,
+        booked: true,
+        step: 3,
+        visitPhase: "upcoming",
+        visitDay: false,
+        awayFromVisit: false,
+        rescheduling: false,
+        connectionProblem: false,
+        banner: "",
+      },
     });
   }, []);
 
@@ -373,7 +426,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     if (current.email.trim().toLowerCase() !== email.trim().toLowerCase()) return "missing";
     dispatch({
       type: "patch",
-      patch: { step: current.maxReached, banner: "", booked: false },
+      patch: { step: current.booked ? 3 : current.maxReached, banner: "", awayFromVisit: false, rescheduling: false },
     });
     return "ok";
   }, []);

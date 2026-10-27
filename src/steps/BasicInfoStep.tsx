@@ -17,7 +17,7 @@ export function BasicInfoStep() {
       setErrors(problems);
       return;
     }
-    patch({ step: 5, banner: "" });
+    patch({ step: 3, banner: "" });
   }
 
   return (

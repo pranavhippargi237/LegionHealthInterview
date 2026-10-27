@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { LogIn, X } from "lucide-react";
+import { LogIn, ShieldCheck, X } from "lucide-react";
 import { useDialogs } from "../state";
 
 export const inputClass =
@@ -16,12 +16,19 @@ export function Logo() {
         />
       </svg>
       <div className="leading-none">
-        <div className="text-[22px] font-bold tracking-[-0.045em] text-[#16325C]">legion</div>
-        <div className="mt-[3px] text-[9px] font-semibold tracking-[0.28em] text-[#6D86A3]">
-          HEALTH
-        </div>
+        <div className="text-[22px] font-bold tracking-[-0.045em] text-[#16325C]">Legion</div>
+        <div className="mt-[3px] text-[11px] font-semibold tracking-[0.16em] text-[#6D86A3]">Health</div>
       </div>
     </div>
+  );
+}
+
+export function HipaaBadge() {
+  return (
+    <p className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+      <ShieldCheck size={14} className="text-brand" aria-hidden="true" />
+      HIPAA Compliant
+    </p>
   );
 }
 
@@ -161,7 +168,7 @@ export function ResumeCard() {
 
 export function CrisisLine() {
   return (
-    <p className="mx-auto mt-8 max-w-[820px] px-5 pb-12 text-sm leading-relaxed text-slate-700">
+    <p className="mt-3 text-sm leading-relaxed text-slate-700">
       If you are in an emergency,{" "}
       <a className="font-semibold text-brand-dark underline" href="tel:911">
         call 911

@@ -9,38 +9,41 @@ import {
   useOnboarding,
 } from "./state";
 import { BasicInfoStep } from "./steps/BasicInfoStep";
-import { ConfirmationStep } from "./steps/ConfirmationStep";
-import { FitStep } from "./steps/FitStep";
-import { HelpStep } from "./steps/HelpStep";
-import { InsuranceStep } from "./steps/InsuranceStep";
+import { AwayFromVisit, ConfirmationStep } from "./steps/ConfirmationStep";
+import { ClipboardStep } from "./steps/ClipboardStep";
 import { MatchStep } from "./steps/MatchStep";
 import { PaymentStep } from "./steps/PaymentStep";
 
-const STEP_VIEWS = [
-  FitStep,
-  InsuranceStep,
-  HelpStep,
-  MatchStep,
-  BasicInfoStep,
-  PaymentStep,
-];
+const STEP_VIEWS = [ClipboardStep, MatchStep, BasicInfoStep, PaymentStep];
 
 function Flow() {
   const { data } = useOnboarding();
-  const Step = STEP_VIEWS[data.step] ?? FitStep;
+  const Step = STEP_VIEWS[data.step] ?? ClipboardStep;
 
   useEffect(() => {
-    document.title = data.booked
-      ? "Appointment reserved · Legion Health"
-      : `${STEPS[data.step].label} · Legion Health`;
-  }, [data.booked, data.step]);
+    document.title = !data.booked
+      ? `${STEPS[data.step].label} · Legion Health`
+      : data.visitPhase === "completed"
+        ? "Visit complete · Legion Health"
+        : data.visitPhase === "waiting"
+          ? "Waiting room · Legion Health"
+          : "Your visit · Legion Health";
+  }, [data.booked, data.step, data.visitPhase]);
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
-  }, [data.step, data.booked]);
+  }, [data.step, data.booked, data.rescheduling, data.awayFromVisit, data.visitPhase]);
 
-  return <Shell>{data.booked ? <ConfirmationStep /> : <Step />}</Shell>;
+  const bookedView = data.rescheduling ? (
+    <MatchStep />
+  ) : data.awayFromVisit ? (
+    <AwayFromVisit />
+  ) : (
+    <ConfirmationStep />
+  );
+
+  return <Shell>{data.booked ? bookedView : <Step />}</Shell>;
 }
 
 function Dialogs() {
@@ -71,30 +74,34 @@ function Dialogs() {
         </Modal>
       ) : null}
       {helpOpen ? (
-        <Modal title="Need help?" onClose={closeHelp}>
+        <Modal title="Need help booking?" onClose={closeHelp}>
           <div className="space-y-3">
-            <p>If you are in danger or this is a medical emergency, call 911 now.</p>
             <p>
-              If you are thinking about hurting yourself, or you need someone to talk to right now, call or text 988.
-              The Suicide & Crisis Lifeline is available 24 hours a day.
+              This reaches Legion's booking team, for help choosing a time or finishing this form. In this demo, no
+              call or message is sent.
             </p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <a
-                href="tel:911"
-                className="flex h-12 items-center justify-center rounded-lg bg-[#16325C] text-sm font-semibold text-white"
-              >
-                Call 911
-              </a>
-              <a
-                href="tel:988"
-                className="flex h-12 items-center justify-center rounded-lg bg-brand text-sm font-semibold text-white"
-              >
-                Call or text 988
-              </a>
+            <p>Your answers stay on this device. Close this and keep going whenever you are ready.</p>
+            <div className="border-t border-slate-100 pt-3">
+              <h3 className="font-semibold text-slate-900">Emergency and crisis support</h3>
+              <p className="mt-1">
+                This is separate from the booking team. If you are in danger, call 911. If you are in crisis or
+                thinking about suicide, call or text 988.
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <a
+                  href="tel:911"
+                  className="flex h-12 items-center justify-center rounded-lg bg-[#16325C] text-sm font-semibold text-white"
+                >
+                  Call 911
+                </a>
+                <a
+                  href="tel:988"
+                  className="flex h-12 items-center justify-center rounded-lg bg-brand text-sm font-semibold text-white"
+                >
+                  Call or text 988
+                </a>
+              </div>
             </div>
-            <p className="border-t border-slate-100 pt-3">
-              For help finishing this booking, you can close this and keep going. Your answers stay on this device.
-            </p>
           </div>
         </Modal>
       ) : null}

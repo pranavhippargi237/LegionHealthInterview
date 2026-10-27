@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Info, Lock, ShieldCheck, X } from "lucide-react";
+import { Info, Lock, ShieldCheck, X } from "lucide-react";
 import { findProvider, findSlot } from "../data";
 import { digits, formatCard, formatClock, formatExpiry, formatTimeUpper, parseDate } from "../format";
 import { useDialogs, useOnboarding } from "../state";
+import { VisitCost } from "../components/VisitCost";
 import { inputClass } from "../components/ui";
 
 function cardIsValid(number: string, expiry: string, cvc: string, zip: string) {
@@ -48,8 +49,8 @@ export function PaymentStep() {
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <h1 className="text-2xl font-bold">Choose a time first</h1>
         <p className="mt-2 text-sm text-slate-600">An appointment time is required before payment.</p>
-        <button type="button" className="mt-4 h-12 rounded-lg bg-brand px-5 font-semibold text-white" onClick={() => go(3)}>
-          Back to providers
+        <button type="button" className="mt-4 h-12 rounded-lg bg-brand px-5 font-semibold text-white" onClick={() => go(1)}>
+          Back to scheduling
         </button>
       </div>
     );
@@ -74,9 +75,10 @@ export function PaymentStep() {
   return (
     <div>
       <h1 className="text-[28px] font-bold tracking-tight text-slate-900">Complete Your Booking</h1>
-      <p className="mt-1 text-sm text-slate-600">
-        Review your appointment details and add payment information to confirm your booking.
-      </p>
+      <p className="mt-1 text-sm text-slate-600">Pay with a credit or debit card to confirm this visit.</p>
+      <div className="mt-4">
+        <VisitCost data={data} />
+      </div>
 
       <div className="mt-5 rounded-xl bg-[#E8F0FE] px-4 py-3 text-sm text-[#1E3A5F]">
         {seconds > 0 ? (
@@ -109,7 +111,7 @@ export function PaymentStep() {
           </h2>
           <button
             type="button"
-            onClick={() => go(3)}
+            onClick={() => go(1)}
             className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-slate-300"
           >
             Change Appointment
@@ -134,13 +136,11 @@ export function PaymentStep() {
         <div className="mt-4 border-t border-slate-100 pt-4">
           <p className="text-[11px] font-semibold tracking-wide text-slate-500">YOUR PROVIDER</p>
           <div className="mt-2 flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-full bg-[#E8F0FE] text-sm font-semibold text-[#1E3A5F]">
-              {provider.name
-                .split(" ")
-                .map((part) => part[0])
-                .slice(0, 2)
-                .join("")}
-            </div>
+            <img
+              src={provider.photo}
+              alt=""
+              className="h-14 w-14 rounded-xl object-cover"
+            />
             <div>
               <p className="font-semibold text-slate-900">{provider.name}</p>
               <p className="text-sm text-slate-600">{provider.title}</p>
@@ -149,57 +149,28 @@ export function PaymentStep() {
               </p>
             </div>
           </div>
+          <div className="mt-4 rounded-lg border border-[#B9D4F5] bg-[#E8F0FE] px-3 py-3 text-sm leading-relaxed text-[#1E3A5F]">
+            <p className="font-semibold text-slate-900">Cancellation policy</p>
+            <p className="mt-1">
+              Cancel or reschedule online at no charge up to 48 hours before your appointment. Late cancellations
+              (within 48 hours) or no-shows (not arriving within 10 minutes) will incur a fee:{" "}
+              <span className="font-semibold">$250 for initial visits, $100 for follow-ups</span>.
+            </p>
+          </div>
         </div>
-      </section>
-
-      <div className="mt-4 flex gap-2 rounded-xl bg-[#E8F0FE] px-4 py-3 text-sm text-[#1E3A5F]">
-        <CheckCircle2 size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
-        <p>
-          <span className="font-semibold">Insurance verification next:</span> After confirming your appointment, you'll
-          verify your insurance and receive an accurate estimate of your copay before your visit.
-        </p>
-      </div>
-
-      <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-700 sm:p-5">
-        <h2 className="font-semibold text-slate-900">What to expect:</h2>
-        <ul className="mt-3 list-disc space-y-3 pl-4">
-          <li>
-            <span className="font-semibold text-slate-900">When we charge:</span> Claims are submitted to insurance
-            about 5 days after your visit. Once insurance processes, we'll charge your card on file for any remaining
-            balance and send an itemized invoice for the visit so you know exactly what you are paying for.
-          </li>
-          <li>
-            <span className="font-semibold text-slate-900">Your estimated cost:</span> Based on your insurance coverage,
-            most patients pay $0–$40 per session.* You can request an exact price estimate anytime.
-          </li>
-          <li>
-            <span className="font-semibold text-slate-900">Cancellation policy:</span> Cancel or reschedule online at
-            no charge up to 48 hours before your appointment. Late cancellations (within 48 hours) or no-shows (not
-            arriving within 10 minutes) will incur a fee: $250 for initial visits, $100 for follow-ups.
-          </li>
-          <li>
-            <span className="font-semibold text-slate-900">Insurance and Cash Pay:</span> If you do not have eligible
-            insurance coverage at the time of your visit, you will be responsible for the appointment cash pay rate of
-            $250 for Intakes & $150 for Followups.
-          </li>
-          <li>
-            You are responsible for any amount not covered by your insurance. If you have questions about coverage,
-            please contact your insurance provider.
-          </li>
-        </ul>
-        <button type="button" className="mt-3 font-medium text-brand underline" onClick={() => openPolicy("financial")}>
-          Review our financial policy
-        </button>
       </section>
 
       <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
         <h2 className="text-lg font-semibold text-slate-900">Payment Information</h2>
-        <p className="mt-3 text-sm font-medium text-slate-800">Add Payment Method</p>
-        <div className="mt-2 flex items-center gap-2 rounded-lg bg-[#E8F7EE] px-3 py-2 text-sm text-[#166534]">
+        <p className="mt-2 text-sm leading-relaxed text-slate-700">
+          Pay with a credit or debit card. Enter the card number, expiration date, security code, and billing ZIP, then
+          choose Complete Payment Setup.
+        </p>
+        <div className="mt-3 flex items-center gap-2 rounded-lg bg-[#E8F7EE] px-3 py-2 text-sm text-[#166534]">
           <ShieldCheck size={16} aria-hidden="true" />
           Your payment information is encrypted and securely processed by Stripe.
         </div>
-        <p className="mt-4 text-sm font-medium text-slate-800">Credit or Debit Card *</p>
+        <p className="mt-4 text-sm font-medium text-slate-800">Credit or debit card</p>
         <p className="mt-1 text-sm text-slate-600">
           Use Autofill for a demo card. This preview never sends or stores a card number.
         </p>
@@ -308,10 +279,37 @@ export function PaymentStep() {
         </ul>
       </section>
 
+      <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-700 sm:p-5">
+        <h2 className="font-semibold text-slate-900">What to expect:</h2>
+        <ul className="mt-3 list-disc space-y-3 pl-4">
+          <li>
+            <span className="font-semibold text-slate-900">When we charge:</span> Claims are submitted to insurance
+            about 5 days after your visit. Once insurance processes, we'll charge your card on file for any remaining
+            balance and send an itemized invoice for the visit so you know exactly what you are paying for.
+          </li>
+          <li>
+            <span className="font-semibold text-slate-900">Your estimated cost:</span> Based on your insurance coverage,
+            most patients pay $0–$40 per session.* You can request an exact price estimate anytime.
+          </li>
+          <li>
+            <span className="font-semibold text-slate-900">Insurance and Cash Pay:</span> If you do not have eligible
+            insurance coverage at the time of your visit, you will be responsible for the appointment cash pay rate of
+            $250 for Intakes & $150 for Followups.
+          </li>
+          <li>
+            You are responsible for any amount not covered by your insurance. If you have questions about coverage,
+            please contact your insurance provider.
+          </li>
+        </ul>
+        <button type="button" className="mt-3 font-medium text-brand underline" onClick={() => openPolicy("financial")}>
+          Review our financial policy
+        </button>
+      </section>
+
       {toast ? (
         <div
           role="status"
-          className="fixed bottom-6 right-4 z-30 w-[min(100%-2rem,300px)] rounded-lg border border-slate-200 bg-white p-4 shadow-lg lg:right-[420px]"
+          className="fixed bottom-6 right-4 z-30 w-[min(100%-2rem,300px)] rounded-lg border border-slate-200 bg-white p-4 shadow-lg"
         >
           <div className="flex items-start justify-between gap-3">
             <p className="font-semibold text-slate-900">Account created</p>

@@ -4,6 +4,7 @@ export type DayPart = "morning" | "afternoon" | "evening";
 export type TimeOfDay = DayPart | null;
 export type ProviderGender = "woman" | "man" | "nonbinary";
 export type GenderFilter = "any" | ProviderGender;
+export type ClinicianRole = "psychiatrist" | "psychiatric-np";
 export type FitKey = "texas" | "medicare" | "crisis" | "hospitalized" | "adult" | "virtualOnly";
 export type FitDecision = "screened_out" | "cleared" | null;
 export type FitDisposition = "unfinished" | "screened_out" | "continued";
@@ -26,13 +27,14 @@ export type BandCounts = {
 };
 
 export type ScheduleResult = "shown" | "none_open" | "nearby" | "help" | "notify" | "booked";
+export type VisitPhase = "upcoming" | "waiting" | "completed";
 
 export type ScheduleAsk = {
   id: string;
   at: string;
   date: string | null;
   timeOfDay: DayPart;
-  genderFilter: GenderFilter;
+  genders: ProviderGender[];
   onDay: BandCounts | null;
   inNext45Days: BandCounts;
   slotsInRequest: number;
@@ -50,7 +52,9 @@ export type OnboardingData = {
   virtualOnly: YesNo;
   preferredDate: string | null;
   timeOfDay: TimeOfDay;
-  genderFilter: GenderFilter;
+  genderPrefs: ProviderGender[];
+  languagePrefs: string[];
+  backgroundPrefs: string[];
   notifyWhenOpen: boolean;
   scheduleAsks: ScheduleAsk[];
   fitReached: Record<FitKey, boolean>;
@@ -81,7 +85,18 @@ export type OnboardingData = {
   extraShown: number;
   last4: string;
   booked: boolean;
+  pharmacy: string;
+  visitPhase: VisitPhase;
+  visitDay: boolean;
+  awayFromVisit: boolean;
+  rescheduling: boolean;
+  connectionProblem: boolean;
   banner: string;
+  visitTopics: string[];
+  visitNote: string;
+  visitDraft: string;
+  visitWordsSnapshot: string;
+  visitSharedNote: string;
 };
 
 export type Slot = {
@@ -94,7 +109,10 @@ export type Provider = {
   id: string;
   name: string;
   title: string;
+  role: ClinicianRole;
   gender: ProviderGender;
+  languages: string[];
+  backgrounds: string[];
   photo: string;
   video: string;
   credentials: string;
