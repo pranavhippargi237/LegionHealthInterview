@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Info } from "lucide-react";
 import { fitReady, useOnboarding } from "../state";
-import type { YesNo } from "../types";
+import type { FitKey, YesNo } from "../types";
 import { FormNote, PrimaryButton } from "../components/ui";
 
-type AnswerKey = "texas" | "medicare" | "crisis" | "hospitalized" | "adult" | "virtualOnly";
+type AnswerKey = FitKey;
 
 const QUESTIONS: { key: AnswerKey; title: string; body: string }[] = [
   {
@@ -90,13 +90,29 @@ function Resource({
 }
 
 export function FitStep() {
-  const { data, patch } = useOnboarding();
+  const { data, patch, reachFitQuestion } = useOnboarding();
   const [error, setError] = useState("");
   const ready = fitReady(data);
   const answered = QUESTIONS.filter((question) => data[question.key] !== null).length;
 
+  useEffect(() => {
+    const nodes = document.querySelectorAll<HTMLElement>("[data-fit-question]");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const key = entry.target.getAttribute("data-fit-question");
+          if (key) reachFitQuestion(key as FitKey);
+        }
+      },
+      { threshold: 0.4 },
+    );
+    nodes.forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, [reachFitQuestion]);
+
   function setAnswer(key: AnswerKey, value: YesNo) {
-    patch({ [key]: value, banner: "" });
+    patch({ [key]: value, fitContinued: false, banner: "" });
     setError("");
   }
 
@@ -110,7 +126,7 @@ export function FitStep() {
       );
       return;
     }
-    patch({ step: 1, banner: "" });
+    patch({ step: 1, fitContinued: true, banner: "" });
   }
 
   return (
@@ -142,7 +158,11 @@ export function FitStep() {
         {QUESTIONS.map((question, index) => {
           const value = data[question.key];
           return (
-            <section key={question.key} className="rounded-xl border border-slate-200 bg-white px-4 py-4 sm:px-5">
+            <section
+              key={question.key}
+              data-fit-question={question.key}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-4 sm:px-5"
+            >
               <h2 className="text-base font-semibold text-slate-900">
                 <span className="mr-2 text-slate-400">{index + 1}.</span>
                 {question.title}

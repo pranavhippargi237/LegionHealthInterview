@@ -1,8 +1,43 @@
 export type RescheduleWith = "current" | "any" | "specific";
 export type YesNo = "yes" | "no" | null;
-export type TimeOfDay = "any" | "morning" | "afternoon" | "evening";
+export type DayPart = "morning" | "afternoon" | "evening";
+export type TimeOfDay = DayPart | null;
 export type ProviderGender = "woman" | "man" | "nonbinary";
 export type GenderFilter = "any" | ProviderGender;
+export type FitKey = "texas" | "medicare" | "crisis" | "hospitalized" | "adult" | "virtualOnly";
+export type FitDecision = "screened_out" | "cleared" | null;
+export type FitDisposition = "unfinished" | "screened_out" | "continued";
+
+export type FitQuestionTrace = {
+  reached: boolean;
+  answered: YesNo;
+  explicitDecision: FitDecision;
+};
+
+export type FitTrace = {
+  questions: Record<FitKey, FitQuestionTrace>;
+  disposition: FitDisposition;
+};
+
+export type BandCounts = {
+  morning: number;
+  afternoon: number;
+  evening: number;
+};
+
+export type ScheduleResult = "shown" | "none_open" | "nearby" | "help" | "notify" | "booked";
+
+export type ScheduleAsk = {
+  id: string;
+  at: string;
+  date: string | null;
+  timeOfDay: DayPart;
+  genderFilter: GenderFilter;
+  onDay: BandCounts | null;
+  inNext45Days: BandCounts;
+  slotsInRequest: number;
+  result: ScheduleResult;
+};
 
 export type OnboardingData = {
   step: number;
@@ -16,6 +51,11 @@ export type OnboardingData = {
   preferredDate: string | null;
   timeOfDay: TimeOfDay;
   genderFilter: GenderFilter;
+  notifyWhenOpen: boolean;
+  scheduleAsks: ScheduleAsk[];
+  fitReached: Record<FitKey, boolean>;
+  fitContinued: boolean;
+  fitTrace: FitTrace;
   conditions: string[];
   otherCondition: string;
   insurance: string | null;
@@ -55,6 +95,9 @@ export type Provider = {
   name: string;
   title: string;
   gender: ProviderGender;
+  photo: string;
+  video: string;
+  credentials: string;
   rating: number;
   reviews: number;
   expertise: string[];

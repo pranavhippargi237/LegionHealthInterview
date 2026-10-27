@@ -10,7 +10,60 @@ import {
   type ReactNode,
 } from "react";
 import { parseDate, todayISO } from "./format";
-import type { GenderFilter, OnboardingData, TimeOfDay, YesNo } from "./types";
+import type {
+  FitDecision,
+  FitDisposition,
+  FitKey,
+  FitTrace,
+  GenderFilter,
+  OnboardingData,
+  ScheduleAsk,
+  ScheduleResult,
+  TimeOfDay,
+  YesNo,
+} from "./types";
+
+export const FIT_KEYS: FitKey[] = ["texas", "medicare", "crisis", "hospitalized", "adult", "virtualOnly"];
+
+const SCREEN_OUT: Record<FitKey, "yes" | "no"> = {
+  texas: "no",
+  medicare: "yes",
+  crisis: "yes",
+  hospitalized: "yes",
+  adult: "no",
+  virtualOnly: "no",
+};
+
+function emptyReached(): Record<FitKey, boolean> {
+  return {
+    texas: false,
+    medicare: false,
+    crisis: false,
+    hospitalized: false,
+    adult: false,
+    virtualOnly: false,
+  };
+}
+
+function explicitDecision(key: FitKey, answer: YesNo): FitDecision {
+  if (answer == null) return null;
+  return answer === SCREEN_OUT[key] ? "screened_out" : "cleared";
+}
+
+export function buildFitTrace(data: Pick<OnboardingData, FitKey | "fitReached" | "fitContinued">): FitTrace {
+  const questions = {} as FitTrace["questions"];
+  for (const key of FIT_KEYS) {
+    const answered = data[key];
+    questions[key] = {
+      reached: Boolean(data.fitReached?.[key]) || answered != null,
+      answered,
+      explicitDecision: explicitDecision(key, answered),
+    };
+  }
+  const screenedOut = FIT_KEYS.some((key) => questions[key].explicitDecision === "screened_out");
+  const disposition: FitDisposition = screenedOut ? "screened_out" : data.fitContinued ? "continued" : "unfinished";
+  return { questions, disposition };
+}
 
 const KEY = "legion-onboarding-v2";
 
@@ -25,8 +78,22 @@ export function initialData(): OnboardingData {
     adult: null,
     virtualOnly: null,
     preferredDate: null,
-    timeOfDay: "any",
+    timeOfDay: null,
     genderFilter: "any",
+    notifyWhenOpen: false,
+    scheduleAsks: [],
+    fitReached: emptyReached(),
+    fitContinued: false,
+    fitTrace: buildFitTrace({
+      texas: null,
+      medicare: null,
+      crisis: null,
+      hospitalized: null,
+      adult: null,
+      virtualOnly: null,
+      fitReached: emptyReached(),
+      fitContinued: false,
+    }),
     conditions: [],
     otherCondition: "",
     insurance: null,
@@ -65,9 +132,62 @@ function yesNo(value: unknown): YesNo {
 }
 
 function timeOfDay(value: unknown): TimeOfDay {
-  return value === "morning" || value === "afternoon" || value === "evening" || value === "any"
+  return value === "morning" || value === "afternoon" || value === "evening" ? value : null;
+}
+
+function bandCounts(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  const morning = row.morning;
+  const afternoon = row.afternoon;
+  const evening = row.evening;
+  if (typeof morning !== "number" || typeof afternoon !== "number" || typeof evening !== "number") return null;
+  return { morning, afternoon, evening };
+}
+
+function scheduleResult(value: unknown): ScheduleResult | null {
+  return value === "shown" ||
+    value === "none_open" ||
+    value === "nearby" ||
+    value === "help" ||
+    value === "notify" ||
+    value === "booked"
     ? value
-    : "any";
+    : null;
+}
+
+function scheduleAsks(value: unknown): ScheduleAsk[] {
+  if (!Array.isArray(value)) return [];
+  const asks: ScheduleAsk[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Partial<ScheduleAsk>;
+    const result = scheduleResult(row.result);
+    const part = timeOfDay(row.timeOfDay);
+    const inNext45Days = bandCounts(row.inNext45Days);
+    if (!result || !part || !inNext45Days || typeof row.id !== "string" || typeof row.at !== "string") continue;
+    if (typeof row.slotsInRequest !== "number") continue;
+    asks.push({
+      id: row.id,
+      at: row.at,
+      date: typeof row.date === "string" ? row.date : null,
+      timeOfDay: part,
+      genderFilter: genderFilter(row.genderFilter),
+      onDay: bandCounts(row.onDay),
+      inNext45Days,
+      slotsInRequest: row.slotsInRequest,
+      result,
+    });
+  }
+  return asks.slice(-40);
+}
+
+function fitReached(value: unknown): Record<FitKey, boolean> {
+  const base = emptyReached();
+  if (!value || typeof value !== "object") return base;
+  const row = value as Partial<Record<FitKey, unknown>>;
+  for (const key of FIT_KEYS) base[key] = row[key] === true;
+  return base;
 }
 
 function genderFilter(value: unknown): GenderFilter {
@@ -102,7 +222,7 @@ function hydrate(): OnboardingData {
     const parsed = JSON.parse(raw) as Partial<OnboardingData>;
     const step = clampStep(parsed.step);
     const maxReached = Math.max(clampStep(parsed.maxReached), step);
-    return {
+    const next: OnboardingData = {
       ...base,
       ...parsed,
       conditions: Array.isArray(parsed.conditions)
@@ -122,9 +242,15 @@ function hydrate(): OnboardingData {
       preferredDate: typeof parsed.preferredDate === "string" ? parsed.preferredDate : null,
       timeOfDay: timeOfDay(parsed.timeOfDay),
       genderFilter: genderFilter(parsed.genderFilter),
+      notifyWhenOpen: parsed.notifyWhenOpen === true,
+      scheduleAsks: scheduleAsks(parsed.scheduleAsks),
+      fitReached: fitReached(parsed.fitReached),
+      fitContinued: parsed.fitContinued === true,
       banner: "",
       booked: Boolean(parsed.booked),
     };
+    next.fitTrace = buildFitTrace(next);
+    return next;
   } catch {
     return base;
   }
@@ -160,9 +286,11 @@ type Action = { type: "patch"; patch: Partial<OnboardingData> } | { type: "reset
 function reducer(state: OnboardingData, action: Action): OnboardingData {
   if (action.type === "reset") return initialData();
   const next = { ...state, ...action.patch };
+  if (action.patch.fitReached) next.fitReached = { ...state.fitReached, ...action.patch.fitReached };
   if (typeof action.patch.step === "number") {
     next.maxReached = Math.max(state.maxReached, action.patch.step);
   }
+  next.fitTrace = buildFitTrace(next);
   return next;
 }
 
@@ -173,6 +301,8 @@ type OnboardingApi = {
   reset: () => void;
   completeBooking: (last4: string) => void;
   resume: (email: string) => "empty" | "missing" | "ok";
+  reachFitQuestion: (key: FitKey) => void;
+  recordSchedule: (ask: Omit<ScheduleAsk, "id" | "at">) => void;
 };
 
 const OnboardingContext = createContext<OnboardingApi | null>(null);
@@ -222,6 +352,21 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const reachFitQuestion = useCallback((key: FitKey) => {
+    const current = dataRef.current;
+    if (current.fitReached[key]) return;
+    dispatch({ type: "patch", patch: { fitReached: { ...current.fitReached, [key]: true } } });
+  }, []);
+
+  const recordSchedule = useCallback((ask: Omit<ScheduleAsk, "id" | "at">) => {
+    const current = dataRef.current;
+    const entry: ScheduleAsk = { ...ask, id: `${Date.now()}-${current.scheduleAsks.length}`, at: new Date().toISOString() };
+    dispatch({
+      type: "patch",
+      patch: { scheduleAsks: [...current.scheduleAsks, entry].slice(-40) },
+    });
+  }, []);
+
   const resume = useCallback((email: string) => {
     const current = dataRef.current;
     if (!current.email.trim()) return "empty";
@@ -234,8 +379,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const api = useMemo(
-    () => ({ data, patch, go, reset, completeBooking, resume }),
-    [data, patch, go, reset, completeBooking, resume],
+    () => ({ data, patch, go, reset, completeBooking, resume, reachFitQuestion, recordSchedule }),
+    [data, patch, go, reset, completeBooking, resume, reachFitQuestion, recordSchedule],
   );
 
   return <OnboardingContext.Provider value={api}>{children}</OnboardingContext.Provider>;

@@ -1,4 +1,16 @@
 import type { Provider, ProviderGender, Slot } from "./types";
+
+const OWN_PORTRAITS = new Set(["chinwe-mbonu", "naomi-powell", "britanni-greene", "rodesia-howard"]);
+const PORTRAIT_POOL: Record<ProviderGender, string[]> = {
+  woman: ["portrait-woman-1", "portrait-woman-2", "portrait-woman-3"],
+  man: ["portrait-man-1", "portrait-man-2"],
+  nonbinary: ["portrait-nonbinary-1"],
+};
+
+export function clinicianMedia(id: string, gender: ProviderGender, index = 0) {
+  const file = OWN_PORTRAITS.has(id) ? id : PORTRAIT_POOL[gender][index % PORTRAIT_POOL[gender].length];
+  return { photo: `/clinicians/${file}.jpg`, video: `/clinicians/${file}.mp4` };
+}
 import { addDays } from "./format";
 
 export const STEPS = [
@@ -178,6 +190,8 @@ const featured: Provider[] = [
     name: "Chinwe Mbonu",
     title: "Psychiatric Mental Health Nurse Practitioner",
     gender: "woman",
+    ...clinicianMedia("chinwe-mbonu", "woman"),
+    credentials: "PMHNP-BC, MSN",
     rating: 5,
     reviews: 24,
     expertise: ["Depression", "Anxiety", "Trauma", "Mood Disorders", "PTSD", "ADHD"],
@@ -195,6 +209,8 @@ const featured: Provider[] = [
     name: "Naomi Powell",
     title: "Psychiatric Mental Health Nurse Practitioner",
     gender: "woman",
+    ...clinicianMedia("naomi-powell", "woman"),
+    credentials: "PMHNP-BC, board-certified",
     rating: 4.9,
     reviews: 41,
     expertise: [
@@ -220,6 +236,8 @@ const featured: Provider[] = [
     name: "Britanni Greene",
     title: "Psychiatric Mental Health Nurse Practitioner",
     gender: "woman",
+    ...clinicianMedia("britanni-greene", "woman"),
+    credentials: "PMHNP-BC, MSN",
     rating: 4.9,
     reviews: 62,
     expertise: [
@@ -247,6 +265,8 @@ const featured: Provider[] = [
     name: "Rodesia Howard",
     title: "Psychiatric Mental Health Nurse Practitioner",
     gender: "woman",
+    ...clinicianMedia("rodesia-howard", "woman"),
+    credentials: "PMHNP-BC, MSN",
     rating: 4.8,
     reviews: 61,
     expertise: ["ADHD", "Depression", "Anxiety", "Trauma", "Mood Disorders", "PTSD"],
@@ -359,6 +379,8 @@ const LAST = [
   "Dalton",
 ];
 
+const SAMPLE_CREDENTIALS = ["PMHNP-BC, MSN", "PMHNP-BC, DNP", "PMHNP-BC, MSN, ANCC board-certified"];
+
 const FOCUS = [
   ["ADHD", "Anxiety", "Depression"],
   ["Depression", "Mood Disorders", "PTSD"],
@@ -385,6 +407,8 @@ function extraProviders(): Provider[] {
       name: `${first} ${last}`,
       title: "Psychiatric Mental Health Nurse Practitioner",
       gender: GENDER_BY_FIRST[first],
+      ...clinicianMedia(id, GENDER_BY_FIRST[first], index),
+      credentials: SAMPLE_CREDENTIALS[index % SAMPLE_CREDENTIALS.length],
       rating: Math.round((4.6 + (index % 5) * 0.1) * 10) / 10,
       reviews: 12 + ((index * 5) % 80),
       expertise: FOCUS[index % FOCUS.length],
