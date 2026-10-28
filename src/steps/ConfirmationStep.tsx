@@ -1,17 +1,12 @@
 import { useState } from "react";
+import { Video } from "lucide-react";
 import { findProvider, findSlot } from "../data";
-import { formatBookingWhen } from "../format";
-import { useDialogs, useOnboarding } from "../state";
-import type { DayPart, Provider, Slot } from "../types";
+import { digits, formatBookingWhen, formatPhone } from "../format";
+import { useOnboarding } from "../state";
+import type { Provider, Slot } from "../types";
 import { ClinicianNote } from "../components/ClinicianNote";
 import { VisitCost } from "../components/VisitCost";
-import { PrimaryButton } from "../components/ui";
-
-const PARTS: { id: DayPart; label: string }[] = [
-  { id: "morning", label: "Morning" },
-  { id: "afternoon", label: "Afternoon" },
-  { id: "evening", label: "Evening" },
-];
+import { inputClass, PrimaryButton } from "../components/ui";
 
 export function AwayFromVisit() {
   const { data, patch } = useOnboarding();
@@ -35,11 +30,15 @@ export function AwayFromVisit() {
 
 export function ConfirmationStep() {
   const { data, patch, reset } = useOnboarding();
-  const { openHelp } = useDialogs();
   const provider = findProvider(data.providerId);
   const slot = findSlot(provider, data.slotId);
-  const [saved, setSaved] = useState(false);
   const [calendarNote, setCalendarNote] = useState("");
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [reminderChoice, setReminderChoice] = useState<"text" | "email" | null>(data.reminderChannel);
+  const [reminderPhone, setReminderPhone] = useState(data.phone);
+  const [reminderEmail, setReminderEmail] = useState(data.email);
+  const [reminderError, setReminderError] = useState("");
+  const profileName = [data.firstName, data.lastName].map((part) => part.trim()).filter(Boolean).join(" ");
 
   return (
     <div className="space-y-4">
@@ -52,19 +51,26 @@ export function ConfirmationStep() {
               ? "You're in the waiting room."
               : "Your appointment is booked."}
         </h1>
-        <div className="mt-4 rounded-xl bg-[#F3F7FD] px-4 py-4 text-sm leading-relaxed text-slate-700" role="status">
-          {data.visitPhase === "completed" ? (
-            <p className="font-semibold text-slate-900">The clinician confirmed this visit. Instructions are on this page.</p>
-          ) : data.visitPhase === "waiting" ? (
-            <p className="font-semibold text-slate-900">
-              Stay on this page while you wait. The visit is complete when the clinician confirms it.
-            </p>
-          ) : (
-            <>
-              <p className="font-semibold text-slate-900">Nothing left to finish. You can show up.</p>
-              <p className="mt-1">Join is on this page the day of the visit.</p>
-            </>
-          )}
+        {data.visitPhase === "completed" || data.visitPhase === "waiting" ? (
+          <div className="mt-4 rounded-xl bg-[#F3F7FD] px-4 py-4 text-sm leading-relaxed text-slate-700" role="status">
+            {data.visitPhase === "completed" ? (
+              <p className="font-semibold text-slate-900">The clinician confirmed this visit. Instructions are on this page.</p>
+            ) : (
+              <p className="font-semibold text-slate-900">
+                Stay on this page while you wait. The visit is complete when the clinician confirms it.
+              </p>
+            )}
+          </div>
+        ) : null}
+        <div className="mt-4 rounded-xl bg-[#F3F7FD] px-4 py-4 text-sm leading-relaxed text-slate-700">
+          <p className="font-semibold text-slate-900">Your profile</p>
+          {profileName ? <p className="mt-1 text-slate-900">{profileName}</p> : null}
+          {data.email.trim() ? <p className="text-slate-700">{data.email.trim()}</p> : null}
+          <p className="mt-1">
+            {data.email.trim()
+              ? "This profile was created when you booked. You can come back to this visit with this email."
+              : "This profile was created when you booked."}
+          </p>
         </div>
         {provider && slot ? (
           <div className="mt-5 flex gap-4">
@@ -79,10 +85,7 @@ export function ConfirmationStep() {
             </div>
           </div>
         ) : null}
-        <div className="mt-4">
-          <VisitCost data={data} />
-        </div>
-        {data.last4 ? <p className="mt-3 text-sm text-slate-600">Card ending {data.last4} is on file for this visit.</p> : null}
+        {data.last4 ? <p className="mt-4 text-sm text-slate-600">Card ending {data.last4} is on file for this visit.</p> : null}
         {provider && slot ? (
           <div className="mt-4 flex flex-wrap gap-2">
             {data.visitPhase !== "completed" ? (
@@ -101,7 +104,123 @@ export function ConfirmationStep() {
             >
               Add to calendar
             </button>
+            {data.visitPhase !== "completed" ? (
+              <button
+                type="button"
+                aria-expanded={reminderOpen}
+                onClick={() => setReminderOpen((open) => !open)}
+                className="h-11 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800"
+              >
+                Send Me a Reminder
+              </button>
+            ) : null}
+            {data.visitPhase !== "completed" ? (
+              <button
+                type="button"
+                onClick={() => patch({ visitDay: true, visitPhase: "waiting", connectionProblem: false, awayFromVisit: false, banner: "" })}
+                className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#0F7A4A] px-4 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              >
+                <Video size={16} aria-hidden="true" />
+                Join
+              </button>
+            ) : null}
           </div>
+        ) : null}
+        {reminderOpen && data.visitPhase !== "completed" ? (
+          <form
+            className="mt-4 rounded-xl border border-slate-200 bg-[#F3F7FD] p-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (reminderChoice === "text") {
+                if (digits(reminderPhone).length !== 10) {
+                  setReminderError("Enter a 10-digit phone number for the text message.");
+                  return;
+                }
+                patch({ reminderChannel: "text", phone: formatPhone(reminderPhone), banner: "" });
+              } else if (reminderChoice === "email") {
+                if (!/^\S+@\S+\.\S+$/.test(reminderEmail.trim())) {
+                  setReminderError("Enter an email address for the reminder.");
+                  return;
+                }
+                patch({ reminderChannel: "email", email: reminderEmail.trim(), banner: "" });
+              } else {
+                setReminderError("Choose text message or email.");
+                return;
+              }
+              setReminderError("");
+              setReminderOpen(false);
+            }}
+          >
+            <p className="text-sm font-semibold text-slate-900">Prior 24 Hour Reminder</p>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600">
+              You can continue to add additional context if you want. Reply to the email or text reminder if anything
+              else comes up.
+            </p>
+            <fieldset className="mt-3">
+              <legend className="text-sm font-medium text-slate-800">How should we send it?</legend>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  aria-pressed={reminderChoice === "text"}
+                  onClick={() => setReminderChoice("text")}
+                  className={`h-10 rounded-lg border px-3 text-sm font-semibold ${
+                    reminderChoice === "text" ? "border-[#0B6B3A] bg-[#E8F7EE] text-slate-900" : "border-slate-200 bg-white text-slate-800"
+                  }`}
+                >
+                  Text message
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={reminderChoice === "email"}
+                  onClick={() => setReminderChoice("email")}
+                  className={`h-10 rounded-lg border px-3 text-sm font-semibold ${
+                    reminderChoice === "email" ? "border-[#0B6B3A] bg-[#E8F7EE] text-slate-900" : "border-slate-200 bg-white text-slate-800"
+                  }`}
+                >
+                  Email
+                </button>
+              </div>
+            </fieldset>
+            {reminderChoice === "text" ? (
+              <label className="mt-3 block text-sm font-medium text-slate-800">
+                Phone number
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  value={reminderPhone}
+                  onChange={(event) => setReminderPhone(formatPhone(event.target.value))}
+                  placeholder="(555) 010-0199"
+                  className={`${inputClass} mt-1.5 font-normal`}
+                />
+              </label>
+            ) : null}
+            {reminderChoice === "email" ? (
+              <label className="mt-3 block text-sm font-medium text-slate-800">
+                Email
+                <input
+                  type="email"
+                  value={reminderEmail}
+                  onChange={(event) => setReminderEmail(event.target.value)}
+                  placeholder="name@example.com"
+                  className={`${inputClass} mt-1.5 font-normal`}
+                />
+              </label>
+            ) : null}
+            {reminderError ? <p className="mt-2 text-sm text-slate-800">{reminderError}</p> : null}
+            <button type="submit" className="mt-3 h-11 rounded-lg bg-brand px-4 text-sm font-semibold text-white">
+              Save reminder
+            </button>
+            <p className="mt-2 text-sm text-slate-600">
+              This preview saves the reminder on this device. A message is not sent.
+            </p>
+          </form>
+        ) : null}
+        {data.reminderChannel && data.visitPhase !== "completed" ? (
+          <p className="mt-3 text-sm text-slate-700" role="status">
+            {data.reminderChannel === "text"
+              ? `Prior 24 hour reminder set for a text to ${data.phone}.`
+              : `Prior 24 hour reminder set for an email to ${data.email}.`}
+          </p>
         ) : null}
         {calendarNote ? (
           <p className="mt-3 text-sm text-slate-700" role="status">
@@ -111,6 +230,8 @@ export function ConfirmationStep() {
       </section>
 
       {data.visitPhase !== "completed" ? <ClinicianNote /> : null}
+
+      <VisitCost data={data} />
 
       {data.visitPhase === "completed" ? (
         <section className="rounded-xl border border-slate-200 bg-white px-5 py-5 sm:px-8">
@@ -124,83 +245,6 @@ export function ConfirmationStep() {
             No next visit is on the calendar. A follow-up is booked when you and your clinician decide you want one.
           </p>
         </section>
-      ) : null}
-
-      {data.visitPhase !== "completed" ? (
-        <section className="rounded-xl border border-slate-200 bg-white px-5 py-5 sm:px-8">
-          <h2 className="text-lg font-bold text-slate-900">Joining</h2>
-          {data.visitPhase === "upcoming" && !data.visitDay ? (
-            <>
-              <p className="mt-2 text-sm leading-relaxed text-slate-700">
-                On the day of the visit, Join opens the waiting room from this page.
-              </p>
-              <button
-                type="button"
-                className="mt-3 h-11 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-800"
-                onClick={() => patch({ visitDay: true, banner: "" })}
-              >
-                Demo: treat today as the visit day
-              </button>
-            </>
-          ) : null}
-          {data.visitPhase === "upcoming" && data.visitDay ? (
-            <div className="mt-3">
-              <PrimaryButton onClick={() => patch({ visitPhase: "waiting", connectionProblem: false, banner: "" })}>
-                Join
-              </PrimaryButton>
-            </div>
-          ) : null}
-          {data.visitPhase === "waiting" ? (
-            <div className="mt-3 text-sm leading-relaxed text-slate-700">
-              <p>You are checked in. This page stays open. A video call starts when the clinician joins.</p>
-              <p className="mt-2">In this demo, the clinician does not join on their own.</p>
-              <button
-                type="button"
-                className="mt-3 h-11 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-800"
-                onClick={() => patch({ connectionProblem: true, banner: "" })}
-              >
-                Connection problem, or the clinician has not joined
-              </button>
-              {data.connectionProblem ? (
-                <div className="mt-3 rounded-xl bg-[#F3F7FD] px-4 py-4">
-                  <p className="font-semibold text-slate-900">Stay on this page.</p>
-                  <p className="mt-1">
-                    Try joining again if the connection drops. If the clinician has not joined, the booking team can
-                    check whether they are running late.
-                  </p>
-                  <p className="mt-2">A connection problem is not an emergency. For an emergency, call 911. For a crisis, call or text 988.</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="h-11 rounded-lg bg-brand px-4 text-sm font-semibold text-white"
-                      onClick={() => patch({ connectionProblem: false, banner: "" })}
-                    >
-                      Try joining again
-                    </button>
-                    <button
-                      type="button"
-                      className="h-11 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-800"
-                      onClick={openHelp}
-                    >
-                      Contact the booking team
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-              <button
-                type="button"
-                className="mt-4 block text-sm font-semibold text-brand underline"
-                onClick={() => patch({ visitPhase: "completed", connectionProblem: false, banner: "" })}
-              >
-                Demo: clinician confirms this visit is complete
-              </button>
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-
-      {data.visitPhase !== "completed" ? (
-        <EarlierOffer saved={saved} setSaved={setSaved} providerName={provider?.name ?? "this clinician"} />
       ) : null}
 
       <div className="flex flex-wrap gap-2">
@@ -251,144 +295,4 @@ function downloadVisitCalendar(provider: Provider, slot: Slot) {
   link.click();
   URL.revokeObjectURL(url);
   return "A calendar file for this visit downloaded. Your booked appointment is unchanged.";
-}
-
-function EarlierOffer({
-  saved,
-  setSaved,
-  providerName,
-}: {
-  saved: boolean;
-  setSaved: (value: boolean) => void;
-  providerName: string;
-}) {
-  const { data, patch } = useOnboarding();
-
-  return (
-    <section className="rounded-xl border border-slate-200 bg-white px-5 py-5 sm:px-8">
-      <p className="text-xs font-semibold tracking-wide text-slate-500">DEMO ONLY</p>
-      <h2 className="mt-1 text-lg font-bold text-slate-900">Would you like us to let you know if an earlier appointment opens?</h2>
-      <p className="mt-2 text-sm leading-relaxed text-slate-700">
-        We'll keep your current appointment. If an earlier time becomes available, you can review it and choose
-        whether to switch. Nothing changes without your approval.
-      </p>
-      <p className="mt-2 text-sm text-slate-600">Simulated. No notification is scheduled, sent, or saved outside this browser.</p>
-      <div className="mt-3 flex gap-2">
-        <button
-          type="button"
-          aria-pressed={data.wantEarlier}
-          onClick={() => {
-            setSaved(false);
-            patch({ wantEarlier: true, banner: "" });
-          }}
-          className={`h-10 rounded-lg border px-3 text-sm font-semibold ${
-            data.wantEarlier ? "border-brand bg-brand text-white" : "border-slate-200 text-slate-800"
-          }`}
-        >
-          Yes, let me know
-        </button>
-        <button
-          type="button"
-          aria-pressed={!data.wantEarlier}
-          onClick={() => {
-            setSaved(false);
-            patch({ wantEarlier: false, banner: "" });
-          }}
-          className={`h-10 rounded-lg border px-3 text-sm font-semibold ${
-            !data.wantEarlier ? "border-brand bg-brand text-white" : "border-slate-200 text-slate-800"
-          }`}
-        >
-          No thanks
-        </button>
-      </div>
-      {data.wantEarlier ? (
-        <div className="mt-4 space-y-4">
-          <fieldset>
-            <legend className="text-sm font-semibold text-slate-900">Who can the earlier offer include?</legend>
-            <div className="mt-2 flex flex-col gap-2">
-              <label className="flex items-start gap-2 text-sm text-slate-800">
-                <input
-                  type="radio"
-                  name="earlier-who"
-                  checked={data.rescheduleWith !== "any"}
-                  onChange={() => patch({ rescheduleWith: "current" })}
-                />
-                Only {providerName}
-              </label>
-              <label className="flex items-start gap-2 text-sm text-slate-800">
-                <input
-                  type="radio"
-                  name="earlier-who"
-                  checked={data.rescheduleWith === "any"}
-                  onChange={() => patch({ rescheduleWith: "any" })}
-                />
-                Another suitable clinician is fine
-              </label>
-            </div>
-          </fieldset>
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900">Availability you already gave us</h3>
-            <p className="mt-1 text-sm text-slate-600">Edit it here. You do not need to enter it again from scratch.</p>
-            <label className="mt-3 block text-sm font-medium text-slate-800">
-              Day
-              <input
-                type="date"
-                value={data.preferredDate ?? ""}
-                onChange={(event) => {
-                  setSaved(false);
-                  patch({ preferredDate: event.target.value || null });
-                }}
-                className="mt-1 h-11 w-full rounded-lg border border-slate-200 px-3 font-normal"
-              />
-            </label>
-            <fieldset className="mt-3">
-              <legend className="text-sm font-medium text-slate-800">Time of day</legend>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {PARTS.map((part) => (
-                  <button
-                    key={part.id}
-                    type="button"
-                    aria-pressed={data.timeOfDay === part.id}
-                    onClick={() => {
-                      setSaved(false);
-                      patch({ timeOfDay: part.id });
-                    }}
-                    className={`h-10 rounded-lg border px-3 text-sm ${
-                      data.timeOfDay === part.id ? "border-brand bg-blue-50 font-semibold" : "border-slate-200"
-                    }`}
-                  >
-                    {part.label}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-            <label className="mt-3 block text-sm font-medium text-slate-800">
-              Anything else about when you can come
-              <textarea
-                value={data.availabilityNote}
-                onChange={(event) => {
-                  setSaved(false);
-                  patch({ availabilityNote: event.target.value });
-                }}
-                rows={3}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 font-normal"
-              />
-            </label>
-            <button
-              type="button"
-              className="mt-3 h-11 rounded-lg bg-brand px-4 text-sm font-semibold text-white"
-              onClick={() => setSaved(true)}
-            >
-              Save this availability
-            </button>
-            {saved ? (
-              <p className="mt-2 text-sm text-slate-700" role="status">
-                Saved in this demo only. Your booked appointment is unchanged, and no alert was scheduled.
-              </p>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-    </section>
-  );
 }

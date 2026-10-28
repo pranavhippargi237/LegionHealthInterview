@@ -27,22 +27,6 @@ export function appendToNote(current: string, addition: string, gap: "line" | "s
   return gap === "line" ? `${base}\n${extra}` : `${base} ${extra}`;
 }
 
-function joinAnd(items: string[]) {
-  if (items.length <= 1) return items[0] ?? "";
-  if (items.length === 2) return `${items[0]} and ${items[1]}`;
-  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
-}
-
-export function organizeVisitNote(note: string, topicIds: string[]) {
-  const lines: string[] = [];
-  if (topicIds.includes("unsure")) lines.push("I'm not sure where to start.");
-  const spoken = VISIT_TOPICS.filter((topic) => topic.spoken && topicIds.includes(topic.id)).map((topic) => topic.spoken);
-  if (spoken.length > 0) lines.push(`I'd like to talk about ${joinAnd(spoken)}.`);
-  const words = note.trim();
-  if (words) lines.push(words);
-  return lines.join("\n\n");
-}
-
 export function earlierPrompts(input: { conditions: string[]; otherCondition: string; help: string | null }) {
   const prompts: { topicId: VisitTopicId | ""; line: string }[] = [];
   if (input.conditions.includes("depression")) {

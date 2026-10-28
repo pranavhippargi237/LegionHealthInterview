@@ -793,7 +793,7 @@ export function MatchStep() {
                         type="button"
                         aria-expanded={othersOpen}
                         onClick={() => setOthersOpen((open) => !open)}
-                        className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                        className="h-11 rounded-lg bg-brand px-3 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                       >
                         Show other available clinicians
                       </button>

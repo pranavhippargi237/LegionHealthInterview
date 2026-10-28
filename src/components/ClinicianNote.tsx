@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { Mic } from "lucide-react";
 import { useOnboarding } from "../state";
-import { appendToNote, earlierPrompts, organizeVisitNote, SENTENCE_STARTERS, VISIT_TOPICS, type VisitTopicId } from "../visitNote";
+import { appendToNote, earlierPrompts, SENTENCE_STARTERS, VISIT_TOPICS, type VisitTopicId } from "../visitNote";
 
 type SpeechAlternative = { transcript: string };
 type SpeechResult = { isFinal: boolean; length: number; [index: number]: SpeechAlternative };
@@ -30,7 +31,6 @@ export function ClinicianNote() {
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState("");
   const [speechMessage, setSpeechMessage] = useState("");
-  const [draftMessage, setDraftMessage] = useState("");
   const [shareMessage, setShareMessage] = useState("");
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const committedRef = useRef("");
@@ -145,20 +145,6 @@ export function ClinicianNote() {
     }
   }
 
-  function organize() {
-    try {
-      const draft = organizeVisitNote(data.visitNote, data.visitTopics);
-      if (!draft.trim()) {
-        setDraftMessage("Add a few words or pick a topic first. What you wrote is still in the box.");
-        return;
-      }
-      patch({ visitDraft: draft, visitWordsSnapshot: data.visitNote, banner: "" });
-      setDraftMessage("");
-    } catch {
-      setDraftMessage("Those words couldn't be organized just now. What you wrote is still in the box.");
-    }
-  }
-
   function share() {
     if (!data.visitNote.trim()) {
       setShareMessage("There's nothing to share yet. You can leave this blank.");
@@ -209,8 +195,8 @@ export function ClinicianNote() {
             return (
               <label
                 key={topic.id}
-                className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium text-slate-900 ${
-                  checked ? "border-[#0B6B3A] bg-[#E8F7EE]" : "border-slate-200 bg-white"
+                className={`inline-flex cursor-pointer items-center gap-2 rounded-full border-2 border-[#8EBBFF] px-3 py-2 text-sm font-medium text-slate-900 ${
+                  checked ? "bg-[#E8F7EE]" : "bg-white"
                 }`}
               >
                 <input
@@ -254,15 +240,15 @@ export function ClinicianNote() {
             rows={5}
             aria-label="Anything you'd like your clinician to know"
             placeholder="Write as much or as little as you want."
-            className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-3 py-3 text-sm leading-relaxed text-slate-900 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            className="mt-2 w-full resize-y rounded-xl border-2 border-[#8EBBFF] px-3 py-3 text-sm leading-relaxed text-slate-900 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           />
         </label>
-        <div className="mt-3 sm:mt-7 sm:w-40 sm:shrink-0">
+        <div className="mt-3 sm:mt-7 sm:shrink-0">
           {listening ? (
             <button
               type="button"
               onClick={stopListening}
-              className="h-12 w-full rounded-lg bg-slate-900 px-3 text-sm font-semibold text-white"
+              className="h-12 rounded-lg bg-slate-900 px-3 text-sm font-semibold text-white"
             >
               Stop
             </button>
@@ -270,9 +256,10 @@ export function ClinicianNote() {
             <button
               type="button"
               onClick={talk}
-              className="h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
+              aria-label="Talk instead"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             >
-              Talk instead
+              <Mic size={20} aria-hidden="true" />
             </button>
           )}
         </div>
@@ -292,68 +279,18 @@ export function ClinicianNote() {
         </p>
       ) : null}
       <p className="mt-3 text-sm leading-relaxed text-slate-600">
-        Talk instead asks for the microphone only after you press it. Your browser turns speech into text. In Chrome
+        The microphone button asks for the microphone only after you press it. Your browser turns speech into text. In Chrome
         and some other browsers, that audio goes to the browser's speech service to make the transcript. Legion does
         not keep the recording. The words are added to this box, where you can change them or keep typing. Stopping
         the microphone leaves the note here with you.
       </p>
 
-      <div className="mt-5">
-        <button
-          type="button"
-          onClick={organize}
-          className="h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900"
-        >
-          Help me put this into words
-        </button>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600">
-          This arranges the topics you picked and the words you wrote. It keeps your wording, including uncertainty.
-          It does not add a diagnosis or a treatment. If this can't be done, the box above stays as you left it.
-        </p>
-        {draftMessage ? (
-          <p className="mt-2 text-sm text-slate-700" role="status">
-            {draftMessage}
-          </p>
-        ) : null}
-      </div>
-
-      {data.visitDraft ? (
-        <div className="mt-4 rounded-xl bg-[#F7F8FB] px-4 py-4">
-          <label className="block">
-            <span className="text-sm font-semibold text-slate-900">A draft from your words</span>
-            <textarea
-              value={data.visitDraft}
-              onChange={(event) => patch({ visitDraft: event.target.value, banner: "" })}
-              rows={5}
-              aria-label="Draft from your words"
-              className="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-relaxed text-slate-900 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-            />
-          </label>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setNote(data.visitDraft)}
-              className="h-10 rounded-lg bg-brand px-3 text-sm font-semibold text-white"
-            >
-              Use this draft
-            </button>
-            <button
-              type="button"
-              onClick={() => setNote(data.visitWordsSnapshot)}
-              className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800"
-            >
-              Keep my words
-            </button>
-          </div>
-        </div>
-      ) : null}
-
       <div className="mt-5 rounded-xl border border-[#B9D4F5] bg-[#E8F0FE] px-4 py-4">
         <h3 className="text-sm font-semibold text-slate-900">Who can see this</h3>
         <p className="mt-2 text-sm leading-relaxed text-[#1E3A5F]">
           Before anything is shared, only you can see this. It stays on this device with your visit. Your clinician
-          sees it after you press Share with your clinician. Leaving this page, stopping the microphone, and organizing
-          your words leave the note with you.
+          sees it after you press Share with your clinician. Leaving this page and stopping the microphone leave the
+          note with you.
         </p>
         <p className="mt-2 text-sm leading-relaxed text-[#1E3A5F]">
           In this preview, sharing saves the note on this device. It is not sent to a clinic.

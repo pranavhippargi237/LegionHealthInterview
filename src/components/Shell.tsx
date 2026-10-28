@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Phone } from "lucide-react";
 import { STEPS, TESTIMONIALS } from "../data";
 import { useDialogs, useOnboarding } from "../state";
+import { ProfileMenu } from "./ProfileMenu";
 import { ProgressMenu } from "./ProgressMenu";
 import { HipaaBadge, Logo } from "./ui";
 
@@ -38,6 +39,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <Phone size={15} aria-hidden="true" />
               Need help booking?
             </button>
+            <ProfileMenu />
           </div>
         </div>
         {scheduling ? null : (

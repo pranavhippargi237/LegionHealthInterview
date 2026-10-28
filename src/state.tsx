@@ -131,9 +131,8 @@ export function initialData(): OnboardingData {
     banner: "",
     visitTopics: [],
     visitNote: "",
-    visitDraft: "",
-    visitWordsSnapshot: "",
     visitSharedNote: "",
+    reminderChannel: null,
   };
 }
 
@@ -279,9 +278,8 @@ function hydrate(): OnboardingData {
       connectionProblem: parsed.connectionProblem === true,
       visitTopics: stringList(parsed.visitTopics).filter((id) => VISIT_TOPIC_IDS.includes(id)),
       visitNote: typeof parsed.visitNote === "string" ? parsed.visitNote : "",
-      visitDraft: typeof parsed.visitDraft === "string" ? parsed.visitDraft : "",
-      visitWordsSnapshot: typeof parsed.visitWordsSnapshot === "string" ? parsed.visitWordsSnapshot : "",
       visitSharedNote: typeof parsed.visitSharedNote === "string" ? parsed.visitSharedNote : "",
+      reminderChannel: parsed.reminderChannel === "text" || parsed.reminderChannel === "email" ? parsed.reminderChannel : null,
     };
     next.fitTrace = buildFitTrace(next);
     return next;
