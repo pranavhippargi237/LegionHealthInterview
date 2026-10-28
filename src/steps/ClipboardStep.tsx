@@ -4,6 +4,7 @@ import { BCBS_STATES, CONDITIONS, HELP_OPTIONS, INSURERS } from "../data";
 import { clipboardReady, fitReady, paymentReady, useOnboarding } from "../state";
 import type { FitKey, YesNo } from "../types";
 import { InsurerLogo } from "../components/InsurerLogo";
+import { NextSteps } from "../components/NextSteps";
 import { CrisisLine, FormNote, PrimaryButton } from "../components/ui";
 
 const QUESTIONS: { key: FitKey; title: string; body: string }[] = [
@@ -46,18 +47,22 @@ function Choice({
   label,
   pressed,
   onClick,
+  fixed = false,
 }: {
   label: string;
   pressed: boolean;
   onClick: () => void;
+  fixed?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-pressed={pressed}
       onClick={onClick}
-      className={`h-11 rounded-lg border text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
-        pressed ? "border-brand bg-brand text-white" : "border-slate-200 bg-white text-slate-800 hover:border-slate-300"
+      className={`inline-flex shrink-0 items-center justify-center rounded-lg border-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+        fixed ? "h-11 w-[88px]" : "h-10 px-4"
+      } ${
+        pressed ? "border-[#0B6B3A] bg-[#0F7A4A] text-white" : "border-slate-900 bg-white text-slate-900 hover:bg-slate-50"
       }`}
     >
       {label}
@@ -133,10 +138,17 @@ export function ClipboardStep() {
   }
 
   const usingListed = Boolean(data.insurance && LISTED.some((item) => item.id === data.insurance));
+  const requiredAnswers = [
+    ...QUESTIONS.map((question) => data[question.key] !== null),
+    paymentReady(data),
+    Boolean(data.help),
+  ];
+  const requiredAnswered = requiredAnswers.filter(Boolean).length;
 
   return (
-    <div>
-      <div>
+    <div className="mx-auto grid w-full max-w-[1248px] items-start gap-8 min-[1100px]:grid-cols-[minmax(0,1fr)_320px]">
+      <NextSteps answered={requiredAnswered} total={requiredAnswers.length} />
+      <div className="min-w-0 min-[1100px]:order-1">
         <h1 className="text-balance text-[28px] font-bold tracking-tight text-slate-900">Initial questions</h1>
         <CrisisLine />
         <section className="mt-4 rounded-xl bg-[#F3F7FD] px-4 py-4 text-sm leading-relaxed text-slate-700">
@@ -148,7 +160,6 @@ export function ClipboardStep() {
             on this page.
           </p>
         </section>
-      </div>
 
       {error ? (
         <div className="mt-4">
@@ -156,51 +167,51 @@ export function ClipboardStep() {
         </div>
       ) : null}
 
-      <section className="mt-6">
+      <section className="mt-[1.05rem] max-w-[896px]">
         <h2 className="text-lg font-bold text-slate-900">Qualifications</h2>
-        <div className="mt-3 space-y-3">
+        <div className="mt-[0.35rem] divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white px-4">
           {QUESTIONS.slice(0, 4).map((question) => (
-            <QuestionCard key={question.key} question={question} value={data[question.key]} onAnswer={setAnswer} />
+            <QuestionCard key={question.key} question={question} value={data[question.key]} onAnswer={setAnswer} compact />
           ))}
         </div>
       </section>
 
-      <section className="mt-6">
+      <section className="mt-[1.05rem] max-w-[896px]">
         <h2 className="text-lg font-bold text-slate-900">Safety</h2>
-        <div className="mt-3 space-y-3">
+        <div className="mt-[0.35rem] divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white px-4">
           {QUESTIONS.slice(4).map((question) => (
-            <QuestionCard key={question.key} question={question} value={data[question.key]} onAnswer={setAnswer} />
+            <QuestionCard key={question.key} question={question} value={data[question.key]} onAnswer={setAnswer} compact />
           ))}
         </div>
       </section>
 
-      <section className="mt-6 rounded-xl border border-slate-200 bg-white px-4 py-4 sm:px-5">
+      <section className="mt-[1.05rem] max-w-[896px] rounded-xl border border-slate-200 bg-white px-4 py-4">
         <h2 className="text-base font-semibold text-slate-900">How would you like to pay?</h2>
-        <p className="mt-1 text-sm leading-relaxed text-slate-600">
+        <p className="mt-[0.175rem] text-sm leading-snug text-slate-600">
           You are choosing how to pay for a visit. Selecting an insurance company means using a plan you already have.
           You are not buying insurance through this form.
         </p>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full table-fixed border-collapse text-left text-sm">
+        <div className="mt-[0.525rem] overflow-x-auto">
+          <table className="w-full table-fixed border-collapse border-2 border-slate-900 text-left text-sm">
             <colgroup>
               <col className="w-[18%]" />
               <col className="w-[64%]" />
               <col className="w-[18%]" />
             </colgroup>
             <thead>
-              <tr className="border-b border-slate-200 text-slate-500">
-                <th scope="col" className="py-2 pr-3 font-semibold">Payment option</th>
-                <th scope="col" className="py-2 pr-3 font-semibold">What I can select</th>
-                <th scope="col" className="py-2 font-semibold">What I should understand</th>
+              <tr className="border-b-2 border-slate-900 bg-[#16325C] text-white">
+                <th scope="col" className="border border-slate-900 px-3 py-3 font-semibold">Payment option</th>
+                <th scope="col" className="border border-slate-900 px-3 py-3 font-semibold">What I can select</th>
+                <th scope="col" className="border border-slate-900 px-3 py-3 font-semibold">What I should understand</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-slate-100 align-top">
-                <th scope="row" className={`py-3 pr-3 font-semibold text-slate-900 ${usingListed ? "bg-[#E8F7EE]" : ""}`}>
+              <tr className="border-b border-slate-900 align-top">
+                <th scope="row" className={`border border-slate-900 px-3 py-3 font-semibold text-slate-900 ${usingListed ? "bg-[#E8F7EE]" : ""}`}>
                   Use my insurance
                 </th>
-                <td className={`py-3 pr-3 ${usingListed ? "bg-[#E8F7EE]" : ""}`}>
-                  <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                <td className={`border border-slate-900 px-3 py-3 ${usingListed ? "bg-[#E8F7EE]" : ""}`}>
+                  <div className="grid grid-cols-2 gap-2">
                     {LISTED.map((insurer) => {
                       const selected = data.insurance === insurer.id;
                       return (
@@ -212,8 +223,8 @@ export function ClipboardStep() {
                             patch({ insurance: insurer.id, banner: "" });
                             setError("");
                           }}
-                          className={`inline-flex h-12 w-full items-center justify-center rounded-lg border bg-white px-2 text-sm font-medium text-slate-800 ${
-                            selected ? "border-brand ring-2 ring-brand" : "border-slate-200"
+                          className={`inline-flex h-14 w-full items-center justify-center rounded-lg border-0 px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+                            selected ? "bg-[#0F7A4A]" : "bg-white"
                           }`}
                         >
                           <InsurerLogo id={insurer.id} />
@@ -237,19 +248,19 @@ export function ClipboardStep() {
                     </label>
                   ) : null}
                 </td>
-                <td className={`py-3 text-xs leading-snug text-slate-700 ${usingListed ? "bg-[#E8F7EE] font-bold" : ""}`}>
+                <td className={`border border-slate-900 px-3 py-3 text-sm leading-snug text-slate-800 ${usingListed ? "bg-[#E8F7EE] font-semibold" : ""}`}>
                   The current prototype’s $0–$40 range is an estimate for a visit. Your actual cost needs benefits
                   verification. Selecting a company does not mean the visit is covered.
                 </td>
               </tr>
-              <tr className="border-b border-slate-100 align-top">
+              <tr className="border-b border-slate-900 align-top">
                 <th
                   scope="row"
-                  className={`py-3 pr-3 font-semibold text-slate-900 ${data.insurance === "other" ? "bg-[#E8F7EE]" : ""}`}
+                  className={`border border-slate-900 px-3 py-3 font-semibold text-slate-900 ${data.insurance === "other" ? "bg-[#E8F7EE]" : ""}`}
                 >
                   Check another insurance plan
                 </th>
-                <td className={`py-3 pr-3 ${data.insurance === "other" ? "bg-[#E8F7EE]" : ""}`}>
+                <td className={`border border-slate-900 px-3 py-3 ${data.insurance === "other" ? "bg-[#E8F7EE]" : ""}`}>
                   <button
                     type="button"
                     aria-pressed={data.insurance === "other"}
@@ -257,8 +268,8 @@ export function ClipboardStep() {
                       patch({ insurance: "other", banner: "" });
                       setError("");
                     }}
-                    className={`h-9 rounded-lg border px-3 text-sm font-medium ${
-                      data.insurance === "other" ? "border-brand bg-brand text-white" : "border-slate-200 text-slate-800"
+                    className={`h-10 w-full rounded-lg border-0 px-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+                      data.insurance === "other" ? "bg-[#0F7A4A] text-white" : "bg-transparent text-slate-900"
                     }`}
                   >
                     Other insurance
@@ -276,7 +287,7 @@ export function ClipboardStep() {
                   ) : null}
                 </td>
                 <td
-                  className={`py-3 text-xs leading-snug text-slate-700 ${data.insurance === "other" ? "bg-[#E8F7EE] font-bold" : ""}`}
+                  className={`border border-slate-900 px-3 py-3 text-sm leading-snug text-slate-800 ${data.insurance === "other" ? "bg-[#E8F7EE] font-semibold" : ""}`}
                 >
                   The cost is unknown until coverage is checked. Choosing this does not automatically enroll you in
                   self-pay.
@@ -285,11 +296,11 @@ export function ClipboardStep() {
               <tr className="align-top">
                 <th
                   scope="row"
-                  className={`py-3 pr-3 font-semibold text-slate-900 ${data.insurance === "none" ? "bg-[#E8F7EE]" : ""}`}
+                  className={`border border-slate-900 px-3 py-3 font-semibold text-slate-900 ${data.insurance === "none" ? "bg-[#E8F7EE]" : ""}`}
                 >
                   Pay without insurance
                 </th>
-                <td className={`py-3 pr-3 ${data.insurance === "none" ? "bg-[#E8F7EE]" : ""}`}>
+                <td className={`border border-slate-900 px-3 py-3 ${data.insurance === "none" ? "bg-[#E8F7EE]" : ""}`}>
                   <button
                     type="button"
                     aria-pressed={data.insurance === "none"}
@@ -297,15 +308,15 @@ export function ClipboardStep() {
                       patch({ insurance: "none", banner: "" });
                       setError("");
                     }}
-                    className={`h-9 rounded-lg border px-3 text-sm font-medium ${
-                      data.insurance === "none" ? "border-brand bg-brand text-white" : "border-slate-200 text-slate-800"
+                    className={`h-10 w-full rounded-lg border-0 px-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+                      data.insurance === "none" ? "bg-[#0F7A4A] text-white" : "bg-transparent text-slate-900"
                     }`}
                   >
                     Self-pay
                   </button>
                 </td>
                 <td
-                  className={`py-3 text-xs leading-snug text-slate-700 ${data.insurance === "none" ? "bg-[#E8F7EE] font-bold" : ""}`}
+                  className={`border border-slate-900 px-3 py-3 text-sm leading-snug text-slate-800 ${data.insurance === "none" ? "bg-[#E8F7EE] font-semibold" : ""}`}
                 >
                   The quoted demo prices are $250 for the first visit and $150 for follow-ups.
                 </td>
@@ -399,6 +410,7 @@ export function ClipboardStep() {
       <div className="mt-4 pb-12">
         <PrimaryButton onClick={findAppointment}>Find an appointment</PrimaryButton>
       </div>
+      </div>
     </div>
   );
 }
@@ -407,19 +419,15 @@ function QuestionCard({
   question,
   value,
   onAnswer,
+  compact = false,
 }: {
   question: (typeof QUESTIONS)[number];
   value: YesNo;
   onAnswer: (key: FitKey, value: YesNo) => void;
+  compact?: boolean;
 }) {
-  return (
-    <section data-fit-question={question.key} className="rounded-xl border border-slate-200 bg-white px-4 py-4 sm:px-5">
-      <h3 className="text-base font-semibold text-slate-900">{question.title}</h3>
-      <p className="mt-1 text-sm leading-relaxed text-slate-600">{question.body}</p>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <Choice label="Yes" pressed={value === "yes"} onClick={() => onAnswer(question.key, "yes")} />
-        <Choice label="No" pressed={value === "no"} onClick={() => onAnswer(question.key, "no")} />
-      </div>
+  const followUp = (
+    <>
       {question.key === "texas" && value === "no" ? (
         <p className="mt-3 rounded-lg bg-[#E8F0FE] px-3 py-3 text-sm leading-relaxed text-[#1E3A5F]">
           Legion currently cares for people who will be in Texas for the visit. Choose Yes if that is you.
@@ -473,6 +481,36 @@ function QuestionCard({
           primary care clinician can help you find a local practice.
         </p>
       ) : null}
+    </>
+  );
+
+  if (compact) {
+    return (
+      <section data-fit-question={question.key} className="py-[18px]">
+        <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_max-content] sm:gap-5">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-slate-900">{question.title}</h3>
+            <p className="mt-0.5 text-sm leading-snug text-slate-600">{question.body}</p>
+          </div>
+          <div className="flex justify-start gap-[10px]">
+            <Choice fixed label="Yes" pressed={value === "yes"} onClick={() => onAnswer(question.key, "yes")} />
+            <Choice fixed label="No" pressed={value === "no"} onClick={() => onAnswer(question.key, "no")} />
+          </div>
+        </div>
+        {followUp}
+      </section>
+    );
+  }
+
+  return (
+    <section data-fit-question={question.key} className="rounded-xl border border-slate-200 bg-white px-4 py-4 sm:px-5">
+      <h3 className="text-base font-semibold text-slate-900">{question.title}</h3>
+      <p className="mt-1 text-sm leading-relaxed text-slate-600">{question.body}</p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <Choice label="Yes" pressed={value === "yes"} onClick={() => onAnswer(question.key, "yes")} />
+        <Choice label="No" pressed={value === "no"} onClick={() => onAnswer(question.key, "no")} />
+      </div>
+      {followUp}
     </section>
   );
 }

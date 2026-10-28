@@ -94,6 +94,8 @@ export type OnboardingData = {
   banner: string;
   visitTopics: string[];
   visitNote: string;
+  visitDraft: string;
+  visitWordsSnapshot: string;
   visitSharedNote: string;
   reminderChannel: "text" | "email" | null;
 };

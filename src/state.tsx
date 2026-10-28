@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { STEPS } from "./data";
 import { parseDate, todayISO } from "./format";
 import { VISIT_TOPIC_IDS } from "./visitNote";
 import type {
@@ -131,6 +132,8 @@ export function initialData(): OnboardingData {
     banner: "",
     visitTopics: [],
     visitNote: "",
+    visitDraft: "",
+    visitWordsSnapshot: "",
     visitSharedNote: "",
     reminderChannel: null,
   };
@@ -278,6 +281,8 @@ function hydrate(): OnboardingData {
       connectionProblem: parsed.connectionProblem === true,
       visitTopics: stringList(parsed.visitTopics).filter((id) => VISIT_TOPIC_IDS.includes(id)),
       visitNote: typeof parsed.visitNote === "string" ? parsed.visitNote : "",
+      visitDraft: typeof parsed.visitDraft === "string" ? parsed.visitDraft : "",
+      visitWordsSnapshot: typeof parsed.visitWordsSnapshot === "string" ? parsed.visitWordsSnapshot : "",
       visitSharedNote: typeof parsed.visitSharedNote === "string" ? parsed.visitSharedNote : "",
       reminderChannel: parsed.reminderChannel === "text" || parsed.reminderChannel === "email" ? parsed.reminderChannel : null,
     };
@@ -392,7 +397,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       patch: {
         last4,
         booked: true,
-        step: 3,
+        step: STEPS.length - 1,
         visitPhase: "upcoming",
         visitDay: false,
         awayFromVisit: false,
@@ -424,7 +429,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     if (current.email.trim().toLowerCase() !== email.trim().toLowerCase()) return "missing";
     dispatch({
       type: "patch",
-      patch: { step: current.booked ? 3 : current.maxReached, banner: "", awayFromVisit: false, rescheduling: false },
+      patch: { step: current.booked ? STEPS.length - 1 : current.maxReached, banner: "", awayFromVisit: false, rescheduling: false },
     });
     return "ok";
   }, []);

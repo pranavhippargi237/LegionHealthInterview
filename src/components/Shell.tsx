@@ -12,6 +12,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const step = STEPS[data.step];
   const quote = TESTIMONIALS[data.step]?.quote ?? TESTIMONIALS[0].quote;
   const scheduling = data.rescheduling || (!data.booked && data.step === 1);
+  const questionsPage = !data.booked && data.step === 0;
   const frame = scheduling ? "mx-auto w-full max-w-[1280px] px-4 sm:px-6" : "w-full px-5 sm:px-8";
 
   return (
@@ -42,7 +43,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <ProfileMenu />
           </div>
         </div>
-        {scheduling ? null : (
+        {scheduling || questionsPage ? null : (
           <figure className="mt-5 flex flex-col gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
             <blockquote className="max-w-4xl text-sm leading-relaxed text-slate-700">“{quote}”</blockquote>
             <figcaption className="shrink-0 text-sm text-slate-500">Legion Health Patient</figcaption>
@@ -58,7 +59,7 @@ export function Shell({ children }: { children: ReactNode }) {
               : data.visitPhase === "completed"
                 ? "This visit took place."
                 : data.visitPhase === "waiting"
-                  ? "Waiting room."
+                  ? "Simulated video call."
                   : "Your visit."
           : `Step ${data.step + 1} of ${STEPS.length}, ${step.label}`}
       </p>

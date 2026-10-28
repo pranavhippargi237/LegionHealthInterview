@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic } from "lucide-react";
+import { Mic, Square } from "lucide-react";
 import { useOnboarding } from "../state";
-import { appendToNote, earlierPrompts, SENTENCE_STARTERS, VISIT_TOPICS, type VisitTopicId } from "../visitNote";
+import { appendToNote, earlierPrompts, organizeVisitNote, SENTENCE_STARTERS, VISIT_TOPICS, type VisitTopicId } from "../visitNote";
 
 type SpeechAlternative = { transcript: string };
 type SpeechResult = { isFinal: boolean; length: number; [index: number]: SpeechAlternative };
@@ -31,6 +31,8 @@ export function ClinicianNote() {
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState("");
   const [speechMessage, setSpeechMessage] = useState("");
+  const [draftMessage, setDraftMessage] = useState("");
+  const [shareChoice, setShareChoice] = useState<"words" | "draft">("words");
   const [shareMessage, setShareMessage] = useState("");
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const committedRef = useRef("");
@@ -47,7 +49,8 @@ export function ClinicianNote() {
   const prompts = earlierPrompts(data);
   const selectedTopics = data.visitTopics.filter((id): id is VisitTopicId => VISIT_TOPICS.some((topic) => topic.id === id));
   const shared = data.visitSharedNote.length > 0;
-  const sharedIsCurrent = shared && data.visitSharedNote === data.visitNote;
+  const shareText = shareChoice === "draft" ? data.visitDraft : data.visitNote;
+  const sharedIsCurrent = shared && data.visitSharedNote === shareText;
 
   function setNote(visitNote: string) {
     noteRef.current = visitNote;
@@ -145,24 +148,43 @@ export function ClinicianNote() {
     }
   }
 
+  function organize() {
+    try {
+      const draft = organizeVisitNote(data.visitNote, data.visitTopics);
+      if (!draft.trim()) {
+        setDraftMessage("Add a few words or pick a topic first. What you wrote stays in the box.");
+        return;
+      }
+      patch({ visitDraft: draft, visitWordsSnapshot: data.visitNote, banner: "" });
+      setDraftMessage("");
+    } catch {
+      setDraftMessage("Those words couldn't be organized just now. What you wrote stays in the box.");
+    }
+  }
+
   function share() {
-    if (!data.visitNote.trim()) {
-      setShareMessage("There's nothing to share yet. You can leave this blank.");
+    const text = shareChoice === "draft" ? data.visitDraft : data.visitNote;
+    if (!text.trim()) {
+      setShareMessage(
+        shareChoice === "draft"
+          ? "The draft is empty, so nothing was saved. Your words are still in the box above."
+          : "There's nothing to share yet. You can leave this blank.",
+      );
       return;
     }
-    patch({ visitSharedNote: data.visitNote, banner: "" });
-    setShareMessage("");
+    patch({ visitSharedNote: text, banner: "" });
+    setShareMessage("Saved on this device. It was not sent to your clinician.");
   }
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white px-5 py-5 sm:px-8">
       <h2 className="text-xl font-bold tracking-tight text-slate-900">Anything you'd like your clinician to know?</h2>
       <p className="mt-2 text-sm leading-relaxed text-slate-600">
-        You don't need to have everything figured out. You can add a few thoughts here, or talk about them at your
-        visit. This is optional.
+        Only you can see this until you share it with your clinician, and in this preview that stays on this device.
       </p>
       <p className="mt-3 text-sm leading-relaxed text-slate-700">
         You can pick a topic, write, or talk. One sentence is enough, and you can come back later or leave this alone.
+        This is optional.
       </p>
 
       {prompts.length > 0 ? (
@@ -248,8 +270,10 @@ export function ClinicianNote() {
             <button
               type="button"
               onClick={stopListening}
-              className="h-12 rounded-lg bg-slate-900 px-3 text-sm font-semibold text-white"
+              aria-label="Stop"
+              className="inline-flex h-12 items-center gap-2 rounded-lg bg-[#C53030] px-4 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             >
+              <Square size={14} fill="currentColor" aria-hidden="true" />
               Stop
             </button>
           ) : (
@@ -278,23 +302,68 @@ export function ClinicianNote() {
           {speechMessage}
         </p>
       ) : null}
-      <p className="mt-3 text-sm leading-relaxed text-slate-600">
-        The microphone button asks for the microphone only after you press it. Your browser turns speech into text. In Chrome
-        and some other browsers, that audio goes to the browser's speech service to make the transcript. Legion does
-        not keep the recording. The words are added to this box, where you can change them or keep typing. Stopping
-        the microphone leaves the note here with you.
-      </p>
 
-      <div className="mt-5 rounded-xl border border-[#B9D4F5] bg-[#E8F0FE] px-4 py-4">
-        <h3 className="text-sm font-semibold text-slate-900">Who can see this</h3>
-        <p className="mt-2 text-sm leading-relaxed text-[#1E3A5F]">
-          Before anything is shared, only you can see this. It stays on this device with your visit. Your clinician
-          sees it after you press Share with your clinician. Leaving this page and stopping the microphone leave the
-          note with you.
+      <div className="mt-5">
+        <button
+          type="button"
+          onClick={organize}
+          className="h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900"
+        >
+          Help me organize this
+        </button>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+          This writes a draft from the topics and words already on this page. You can read it and change it. Your
+          original words stay in the box above. Recording and this button do not share anything.
         </p>
-        <p className="mt-2 text-sm leading-relaxed text-[#1E3A5F]">
-          In this preview, sharing saves the note on this device. It is not sent to a clinic.
-        </p>
+        {draftMessage ? (
+          <p className="mt-2 text-sm text-slate-700" role="status">
+            {draftMessage}
+          </p>
+        ) : null}
+      </div>
+
+      {data.visitDraft ? (
+        <div className="mt-4 rounded-xl bg-[#F7F8FB] px-4 py-4">
+          <label className="block">
+            <span className="text-sm font-semibold text-slate-900">A draft you can change</span>
+            <textarea
+              value={data.visitDraft}
+              onChange={(event) => patch({ visitDraft: event.target.value, banner: "" })}
+              rows={5}
+              aria-label="Draft you can change"
+              className="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-relaxed text-slate-900 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            />
+          </label>
+          <p className="mt-2 text-sm text-slate-600">Your original words are still in the box above.</p>
+        </div>
+      ) : null}
+
+      <div className="mt-5">
+        {data.visitDraft ? (
+          <fieldset>
+            <legend className="text-sm font-semibold text-slate-900">Choose what to share</legend>
+            <div className="mt-2 flex flex-col gap-2">
+              <label className="flex items-start gap-2 text-sm text-slate-800">
+                <input
+                  type="radio"
+                  name="share-choice"
+                  checked={shareChoice === "words"}
+                  onChange={() => setShareChoice("words")}
+                />
+                My words
+              </label>
+              <label className="flex items-start gap-2 text-sm text-slate-800">
+                <input
+                  type="radio"
+                  name="share-choice"
+                  checked={shareChoice === "draft"}
+                  onChange={() => setShareChoice("draft")}
+                />
+                The draft
+              </label>
+            </div>
+          </fieldset>
+        ) : null}
         <button
           type="button"
           onClick={share}
@@ -302,7 +371,7 @@ export function ClinicianNote() {
         >
           Share with your clinician
         </button>
-        {shareMessage ? (
+        {shareMessage && !sharedIsCurrent ? (
           <p className="mt-2 text-sm text-slate-800" role="status">
             {shareMessage}
           </p>
@@ -310,8 +379,8 @@ export function ClinicianNote() {
         {shared ? (
           <p className="mt-2 text-sm text-slate-800" role="status">
             {sharedIsCurrent
-              ? "You shared this note with your visit on this device."
-              : "You changed the note after sharing. Share again if you want the newer words saved with this visit."}
+              ? "Saved on this device. It was not sent to your clinician."
+              : "You changed this after saving. The earlier version is still the one on this device. Share again if you want the newer words kept here."}
           </p>
         ) : null}
       </div>

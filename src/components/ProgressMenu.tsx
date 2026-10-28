@@ -7,6 +7,7 @@ const DETAILS = [
   "Required questions, on one page",
   "A day, a time of day, then a time",
   "Name and contact",
+  "A note for your clinician, if you want",
   "Confirm the visit",
 ];
 

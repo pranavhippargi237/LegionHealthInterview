@@ -14,9 +14,10 @@ export function clinicianMedia(id: string, gender: ProviderGender, index = 0) {
 import { addDays } from "./format";
 
 export const STEPS = [
-  { label: "Initial questions", percent: 25 },
-  { label: "Schedule", percent: 50 },
-  { label: "Basic Info", percent: 75 },
+  { label: "Initial questions", percent: 20 },
+  { label: "Schedule", percent: 40 },
+  { label: "Basic Info", percent: 60 },
+  { label: "Complete booking", percent: 80 },
   { label: "Payment", percent: 100 },
 ] as const;
 

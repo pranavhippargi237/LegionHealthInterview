@@ -9,12 +9,13 @@ import {
   useOnboarding,
 } from "./state";
 import { BasicInfoStep } from "./steps/BasicInfoStep";
+import { BookingStep } from "./steps/BookingStep";
 import { AwayFromVisit, ConfirmationStep } from "./steps/ConfirmationStep";
 import { ClipboardStep } from "./steps/ClipboardStep";
 import { MatchStep } from "./steps/MatchStep";
 import { PaymentStep } from "./steps/PaymentStep";
 
-const STEP_VIEWS = [ClipboardStep, MatchStep, BasicInfoStep, PaymentStep];
+const STEP_VIEWS = [ClipboardStep, MatchStep, BasicInfoStep, BookingStep, PaymentStep];
 
 function Flow() {
   const { data } = useOnboarding();
@@ -24,9 +25,9 @@ function Flow() {
     document.title = !data.booked
       ? `${STEPS[data.step].label} · Legion Health`
       : data.visitPhase === "completed"
-        ? "Visit complete · Legion Health"
+        ? "Your first visit is complete · Legion Health"
         : data.visitPhase === "waiting"
-          ? "Waiting room · Legion Health"
+          ? "Simulated video call · Legion Health"
           : "Your visit · Legion Health";
   }, [data.booked, data.step, data.visitPhase]);
 
